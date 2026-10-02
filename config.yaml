@@ -57,8 +57,8 @@ notification:
 
   # Outlook設定 (WindowsのOutlookアプリから自動送信)
   outlook:
-    to_email: "your_email@example.com"  # あなたの社内メールアドレスを指定してください
-    display_only: false                 # trueにすると送信せず、Outlookの作成画面を表示します
+    to_email: "Tanaka.Sota@exc.epson.co.jp"  # あなたの社内メールアドレスを指定してください
+    display_only: true                 # trueにすると送信せず、Outlookの作成画面を表示します
 
   # Teams設定 (Webhook経由)
   teams:
@@ -69,5 +69,5 @@ notification:
 
 # 4. モデル設定
 model:
-  # 利用するGeminiモデル (無料枠あり)
-  name: "gemini-2.5-flash"
+  # 利用するGeminiモデル (無料枠あり・推奨: gemini-3.5-flash)
+  name: "gemini-3.5-flash"

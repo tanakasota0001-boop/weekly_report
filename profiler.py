@@ -9,6 +9,9 @@ from google.genai import types
 
 from models import CompanyProfile
 
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 logger = logging.getLogger(__name__)
 
 CACHE_DIR = "cache"
@@ -25,7 +28,7 @@ def fetch_website_text(url: str, max_chars: int = 4000) -> str:
     }
     try:
         logger.info(f"自社URLをスクレイピング中: {url}")
-        resp = requests.get(url, headers=headers, timeout=10)
+        resp = requests.get(url, headers=headers, timeout=10, verify=False)
         resp.encoding = resp.apparent_encoding
         if resp.status_code != 200:
             logger.warning(f"URLへのアクセスに失敗しました (Status: {resp.status_code}): {url}")
@@ -97,9 +100,12 @@ def build_company_profile(
 }}
 """
 
+    from gemini_helper import generate_with_fallback
+
     logger.info("Geminiによる自社プロファイルの分析中...")
-    response = client.models.generate_content(
-        model=model_name,
+    response = generate_with_fallback(
+        client=client,
+        preferred_model=model_name,
         contents=prompt,
         config=types.GenerateContentConfig(
             system_instruction=system_instruction,

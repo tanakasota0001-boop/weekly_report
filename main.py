@@ -5,6 +5,12 @@ import logging
 import yaml
 from dotenv import load_dotenv
 
+# WindowsコンソールでのUnicodeEncodeError (絵文字など) を防止
+if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+if sys.stderr and hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8')
+
 from profiler import build_company_profile
 from collector import collect_news
 from analyzer import generate_bizdev_analysis

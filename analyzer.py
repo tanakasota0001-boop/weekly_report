@@ -11,6 +11,7 @@ from models import (
     BizDevIdea,
     WeeklyReport
 )
+from gemini_helper import generate_with_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -64,9 +65,12 @@ def evaluate_and_filter_articles(
 }}
 """
 
+    from gemini_helper import generate_with_fallback
+
     try:
-        response = client.models.generate_content(
-            model=model_name,
+        response = generate_with_fallback(
+            client=client,
+            preferred_model=model_name,
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
@@ -149,8 +153,9 @@ URL: {art.link}
 """
 
         try:
-            response = client.models.generate_content(
-                model=model_name,
+            response = generate_with_fallback(
+                client=client,
+                preferred_model=model_name,
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     system_instruction=system_instruction,
@@ -178,8 +183,9 @@ URL: {art.link}
 {chr(10).join(['- ' + i.article_title for i in ideas])}
 """
     try:
-        trend_response = client.models.generate_content(
-            model=model_name,
+        trend_response = generate_with_fallback(
+            client=client,
+            preferred_model=model_name,
             contents=overall_prompt,
             config=types.GenerateContentConfig(
                 temperature=0.3
