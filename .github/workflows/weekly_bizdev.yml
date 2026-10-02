@@ -1,0 +1,33 @@
+name: Weekly BizDev AI Report
+
+on:
+  schedule:
+    # 毎週月曜日 日本時間 朝9:00 (UTC 日曜 0:00)
+    - cron: '0 0 * * 1'
+  workflow_dispatch: # 手動実行トリガー
+
+jobs:
+  run-bizdev-agent:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: リポジトリのチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Pythonのセットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: 依存関係のインストール
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: BizDev AIエージェントの実行
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        run: |
+          python main.py

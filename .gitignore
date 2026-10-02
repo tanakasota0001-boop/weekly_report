@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# 環境変数（APIキーなどの秘匿情報）
+.env
+
+# キャッシュ & 出力レポート
+cache/
+reports/*.md
+!reports/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
