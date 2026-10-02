@@ -8,7 +8,12 @@ from dotenv import load_dotenv
 from profiler import build_company_profile
 from collector import collect_news
 from analyzer import generate_bizdev_analysis
-from notifier import save_markdown_report, send_to_teams, format_report_to_markdown
+from notifier import (
+    save_markdown_report,
+    send_to_teams,
+    send_via_outlook,
+    format_report_to_markdown
+)
 
 # ログ設定
 logging.basicConfig(
@@ -36,7 +41,7 @@ def load_configuration(config_path: str = "config.yaml"):
 def main():
     parser = argparse.ArgumentParser(description="事業開発AIエージェント (BizDev Agent)")
     parser.add_argument("--config", default="config.yaml", help="設定ファイルのパス")
-    parser.add_argument("--dry-run", action="store_true", help="Teams送信を行わず、ローカル出力のみ実行する")
+    parser.add_argument("--dry-run", action="store_true", help="通知送信を行わず、ローカル出力のみ実行する")
     parser.add_argument("--refresh-profile", action="store_true", help="自社プロファイルを再生成する")
     args = parser.parse_args()
 
@@ -111,13 +116,30 @@ def main():
     print(format_report_to_markdown(report))
     print("=" * 60 + "\n")
 
-    if not args.dry_run and notif_cfg.get("send_to_teams", True):
+    if args.dry_run:
+        logger.info("Dry-run モードのため、通知送信をスキップしました。")
+        logger.info("全ステップが完了しました。")
+        return
+
+    # 送信チャンネルの判定
+    channel = notif_cfg.get("channel", "outlook").lower()
+
+    if channel == "outlook":
+        outlook_cfg = notif_cfg.get("outlook", {})
+        to_email = outlook_cfg.get("to_email", "")
+        display_only = outlook_cfg.get("display_only", False)
+        if to_email and "example.com" not in to_email:
+            send_via_outlook(report, to_email=to_email, display_only=display_only)
+        else:
+            logger.warning("config.yaml の notification.outlook.to_email に正しいメールアドレスを設定してください。")
+
+    elif channel == "teams":
         if teams_webhook and teams_webhook != "your_teams_webhook_url_here":
             send_to_teams(teams_webhook, report)
         else:
-            logger.info("TEAMS_WEBHOOK_URL が設定されていないため、Teams送信はスキップされました。")
+            logger.warning("TEAMS_WEBHOOK_URL が設定されていないため、Teams送信はスキップされました。")
     else:
-        logger.info("Dry-run モードまたは Teams送信設定がオフのため、送信をスキップしました。")
+        logger.info(f"通知チャンネルは '{channel}' に設定されています（通知はスキップされました）。")
 
     logger.info("全ステップが完了しました。")
 

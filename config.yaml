@@ -9,6 +9,7 @@ company:
 
   # 自社ホームページURL
   # ※指定するとエージェントが自動でWebサイトを読み込み、自社の強みやターゲットをプロファイリングします
+  # ※社内専用ページやURLがない場合は空欄（""）のままでOKです
   url: "https://example.com"
 
   # 自由記述指示・補足情報
@@ -35,14 +36,24 @@ news:
 
 # 3. 通知・出力設定
 notification:
-  # Teamsへ送信するかどうか (true/false)
-  send_to_teams: true
-  
+  # 送信方法: "outlook" または "teams" または "none"（ローカル保存のみ）
+  # ※おすすめ: Teamsチャネルが作れない場合は "outlook" が最も簡単で確実です！
+  channel: "outlook"
+
+  # Outlook設定 (WindowsのOutlookアプリから自動送信)
+  outlook:
+    to_email: "your_email@example.com"  # あなたの社内メールアドレスを指定
+    display_only: false                 # trueにすると送信せず、Outlookの「作成画面」を画面にポップアップ表示します（確認してから手動送信可能）
+
+  # Teams設定 (Webhook経由)
+  teams:
+    # .env の TEAMS_WEBHOOK_URL を使用します
+    enabled: true
+
   # ローカルの reports/ フォルダにMarkdownファイルを保存するかどうか
   save_markdown_locally: true
 
 # 4. モデル設定
 model:
   # 利用するGeminiモデル (無料枠あり)
-  # gemini-2.5-flash または gemini-1.5-flash
   name: "gemini-2.5-flash"

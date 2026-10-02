@@ -44,6 +44,107 @@ def format_report_to_markdown(report: WeeklyReport) -> str:
     return md
 
 
+def format_report_to_html(report: WeeklyReport) -> str:
+    """Outlookメール用のリッチで美しいHTMLメール本文を生成する"""
+    ideas_html = ""
+    for idx, idea in enumerate(report.ideas, 1):
+        ideas_html += f"""
+        <div style="margin-bottom: 25px; padding: 20px; background-color: #ffffff; border: 1px solid #e1dfdd; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <h3 style="margin-top: 0; color: #0078d4; font-size: 18px; border-bottom: 2px solid #0078d4; padding-bottom: 8px;">
+                🚀 アイデア {idx}: {idea.article_title}
+            </h3>
+            <p style="font-size: 13px; color: #605e5c; margin-bottom: 12px;">
+                <strong>📰 元記事:</strong> <a href="{idea.article_url}" target="_blank" style="color: #0078d4; text-decoration: none;">元記事を読む ↗</a>
+            </p>
+            <div style="background-color: #f3f2f1; padding: 10px 14px; border-radius: 4px; margin-bottom: 16px; font-size: 14px; line-height: 1.5;">
+                <strong>記事のファクト要約:</strong> {idea.source_summary}
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.6;">
+                <tr>
+                    <td style="width: 25%; font-weight: bold; color: #d83b01; padding: 8px 0; vertical-align: top;">
+                        💥 課題 (Pain)
+                    </td>
+                    <td style="padding: 8px 0; color: #323130;">
+                        {idea.market_pain}
+                    </td>
+                </tr>
+                <tr>
+                    <td style="font-weight: bold; color: #107c41; padding: 8px 0; vertical-align: top;">
+                        ⚙️ 最新技術 (Tech)
+                    </td>
+                    <td style="padding: 8px 0; color: #323130;">
+                        {idea.latest_tech}
+                    </td>
+                </tr>
+                <tr>
+                    <td style="font-weight: bold; color: #0078d4; padding: 8px 0; vertical-align: top;">
+                        💡 解決・事業案
+                    </td>
+                    <td style="padding: 8px 0; color: #323130; font-weight: 500;">
+                        {idea.solution_idea}
+                    </td>
+                </tr>
+                <tr>
+                    <td style="font-weight: bold; color: #8764b8; padding: 8px 0; vertical-align: top;">
+                        💰 マネタイズ
+                    </td>
+                    <td style="padding: 8px 0; color: #323130;">
+                        {idea.monetization_model}
+                    </td>
+                </tr>
+                <tr>
+                    <td style="font-weight: bold; color: #004e8c; padding: 8px 0; vertical-align: top;">
+                        🎯 自社の打ち手
+                    </td>
+                    <td style="padding: 8px 0; color: #323130; background-color: #f0f7ff; padding: 8px; border-radius: 4px;">
+                        {idea.internal_next_action}
+                    </td>
+                </tr>
+            </table>
+        </div>
+        """
+
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+    </head>
+    <body style="font-family: 'Segoe UI', Meiryo, 'Hiragino Kaku Gothic ProN', sans-serif; background-color: #faf9f8; color: #323130; margin: 0; padding: 20px;">
+        <div style="max-width: 800px; margin: 0 auto;">
+            <!-- ヘッダー -->
+            <div style="background: linear-gradient(135deg, #0078d4, #106ebe); color: #ffffff; padding: 24px; border-radius: 8px; margin-bottom: 20px;">
+                <h1 style="margin: 0 0 8px 0; font-size: 22px;">{report.report_title}</h1>
+                <p style="margin: 0; font-size: 13px; opacity: 0.9;">
+                    対象: {report.company_name} | 発行日: {report.generated_at}
+                </p>
+            </div>
+
+            <!-- 総括ハイライト -->
+            <div style="background-color: #e8f4fc; border-left: 5px solid #0078d4; padding: 16px 20px; border-radius: 4px; margin-bottom: 25px;">
+                <h3 style="margin-top: 0; margin-bottom: 8px; color: #004e8c; font-size: 16px;">
+                    💡 今週のマクロトレンド & 総括
+                </h3>
+                <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #201f1e;">
+                    {report.overall_trend_comment}
+                </p>
+            </div>
+
+            <!-- アイデア一覧 -->
+            {ideas_html}
+
+            <!-- フッター -->
+            <div style="text-align: center; font-size: 12px; color: #a19f9d; margin-top: 30px; border-top: 1px solid #edebe9; padding-top: 15px;">
+                本レポートは事業開発部向けAIエージェントにより自動生成されました。
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    return html
+
+
 def save_markdown_report(report: WeeklyReport) -> str:
     """レポートをローカルファイルに保存する"""
     os.makedirs(REPORTS_DIR, exist_ok=True)
@@ -56,6 +157,44 @@ def save_markdown_report(report: WeeklyReport) -> str:
 
     logger.info(f"レポートを保存しました: {filepath}")
     return filepath
+
+
+def send_via_outlook(report: WeeklyReport, to_email: str, display_only: bool = False) -> bool:
+    """
+    Windowsのデスクトップ版Outlookを操作してメールを送信または下書き作成する
+    社内の管理者権限やAPI設定が一切不要で動作します。
+    """
+    if not to_email or "@" not in to_email:
+        logger.warning("Outlook宛先メールアドレスが正しく設定されていません。")
+        return False
+
+    try:
+        import win32com.client
+    except ImportError:
+        logger.error("pywin32 がインストールされていません。'pip install pywin32' を実行してください。")
+        return False
+
+    try:
+        logger.info(f"Outlookアプリケーションを起動・接続中... (宛先: {to_email})")
+        outlook = win32com.client.Dispatch("Outlook.Application")
+        # 0 = olMailItem
+        mail = outlook.CreateItem(0)
+        mail.To = to_email
+        mail.Subject = report.report_title
+        mail.HTMLBody = format_report_to_html(report)
+
+        if display_only:
+            logger.info("Outlookの下書き画面を表示します（送信は行われません）。")
+            mail.Display()
+            return True
+        else:
+            logger.info("Outlook経由でメールを自動送信中...")
+            mail.Send()
+            logger.info("Outlookからの送信が完了しました！")
+            return True
+    except Exception as e:
+        logger.error(f"Outlookメール送信中にエラーが発生しました: {e}")
+        return False
 
 
 def build_adaptive_card(report: WeeklyReport) -> dict:
@@ -150,7 +289,7 @@ def build_adaptive_card(report: WeeklyReport) -> dict:
 
 
 def send_to_teams(webhook_url: str, report: WeeklyReport) -> bool:
-    """TeamsのIncoming Webhookにレポートを送信する"""
+    """TeamsのIncoming Webhookにレポートを送信する（チャネルまたはチャット宛て）"""
     if not webhook_url or "your_teams_webhook_url" in webhook_url:
         logger.warning("Teams Webhook URLが設定されていないため、Teams送信をスキップします。")
         return False
@@ -166,7 +305,6 @@ def send_to_teams(webhook_url: str, report: WeeklyReport) -> bool:
             return True
         else:
             logger.warning(f"Teams送信で非200レスポンスを受信しました ({resp.status_code}): {resp.text}")
-            # 旧コネクタ形式にフォールバックして再送を試みる
             fallback_payload = {
                 "text": format_report_to_markdown(report)
             }
