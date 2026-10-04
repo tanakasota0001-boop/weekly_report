@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ビジネス成長AIエージェント | Strategic Growth Studio</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#0284c7',
+              600: '#0369a1',
+              700: '#075985',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+
+  <!-- ヘッダー -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <!-- ロゴ & アプリ名 -->
+        <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('dashboard')">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center text-white shadow-sm font-bold text-xl">
+            🚀
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="font-bold text-lg text-slate-900 tracking-tight">ビジネス成長AIエージェント</span>
+              <span class="bg-sky-100 text-sky-700 text-xs px-2 py-0.5 rounded-full font-semibold">Studio</span>
+            </div>
+            <p class="text-xs text-slate-500 font-medium" id="headerSubtitle">戦略参謀 & 週次インサイト</p>
+          </div>
+        </div>
+
+        <!-- ナビゲーションタブ -->
+        <nav class="hidden md:flex space-x-1">
+          <button id="nav-dashboard" onclick="switchTab('dashboard')" class="px-3.5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center space-x-1.5 bg-sky-50 text-sky-700">
+            <span>📊</span>
+            <span>ダッシュボード</span>
+          </button>
+          <button id="nav-generator" onclick="switchTab('generator')" class="px-3.5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center space-x-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+            <span>⚡</span>
+            <span>レポート生成</span>
+          </button>
+          <button id="nav-history" onclick="switchTab('history')" class="px-3.5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center space-x-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+            <span>📁</span>
+            <span>レポート履歴</span>
+          </button>
+          <button id="nav-settings" onclick="switchTab('settings')" class="px-3.5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center space-x-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+            <span>🎯</span>
+            <span>戦略・設定</span>
+          </button>
+        </nav>
+
+        <!-- 状態バッジ -->
+        <div class="flex items-center space-x-3 text-xs">
+          <div id="statusGemini" class="flex items-center space-x-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full font-medium">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>Gemini API: 接続完了</span>
+          </div>
+          <button onclick="switchTab('generator')" class="bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 text-white font-semibold px-3.5 py-1.5 rounded-lg shadow-sm text-xs transition flex items-center space-x-1">
+            <span>⚡</span>
+            <span>今すぐ生成</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- モバイルナビゲーション -->
+  <div class="md:hidden flex border-b border-slate-200 bg-white px-2 py-1 justify-around text-xs font-medium">
+    <button onclick="switchTab('dashboard')" id="m-nav-dashboard" class="py-2 text-sky-700 font-bold">📊 ダッシュボード</button>
+    <button onclick="switchTab('generator')" id="m-nav-generator" class="py-2 text-slate-600">⚡ 生成</button>
+    <button onclick="switchTab('history')" id="m-nav-history" class="py-2 text-slate-600">📁 履歴</button>
+    <button onclick="switchTab('settings')" id="m-nav-settings" class="py-2 text-slate-600">🎯 設定</button>
+  </div>
+
+  <!-- メインコンテンツ -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- ========================================== -->
+    <!-- 1. ダッシュボード タブ -->
+    <!-- ========================================== -->
+    <div id="tab-dashboard" class="space-y-6">
+      
+      <!-- KPI & アセットサマリーリボン -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
+          <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">🎯 直近の重点KPI</div>
+          <div id="cardFocusKpi" class="text-base font-bold text-sky-700 mt-1 truncate">読み込み中...</div>
+          <div class="text-xs text-slate-400 mt-2">自社注力目標</div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
+          <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">📅 レポート発行日</div>
+          <div id="cardReportDate" class="text-base font-bold text-slate-800 mt-1">--</div>
+          <div id="cardCompanyName" class="text-xs text-slate-400 mt-2">対象企業: --</div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
+          <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">💡 創出アイデア件数</div>
+          <div id="cardIdeaCount" class="text-2xl font-black text-slate-900 mt-1">0 <span class="text-xs font-normal text-slate-500">件</span></div>
+          <div id="cardGlobalCount" class="text-xs text-purple-600 font-semibold mt-2">うち海外先行事例: 0件</div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
+          <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">✉️ 通知設定状況</div>
+          <div id="cardNotification" class="text-base font-bold text-slate-800 mt-1">Gmail</div>
+          <div id="cardNotificationDest" class="text-xs text-slate-400 mt-2 truncate">--</div>
+        </div>
+      </div>
+
+      <!-- レポート未作成時の空状態 -->
+      <div id="emptyReportState" class="hidden bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-xs">
+        <div class="w-16 h-16 bg-sky-50 text-sky-600 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4">
+          📈
+        </div>
+        <h3 class="text-lg font-bold text-slate-900 mb-2">まだレポートが生成されていません</h3>
+        <p class="text-sm text-slate-500 max-w-md mx-auto mb-6">
+          AIエージェントが国内外の最新トレンド（Product Huntや国内ニュース）を自動収集し、自社ビジネスの成長に向けた具体的な打ち手を立案します。
+        </p>
+        <button onclick="switchTab('generator')" class="bg-sky-600 hover:bg-sky-700 text-white font-semibold px-6 py-2.5 rounded-xl shadow-sm text-sm transition">
+          ⚡ 最初のレポートを生成する
+        </button>
+      </div>
+
+      <!-- レポート表示コンテナ -->
+      <div id="reportContentContainer" class="space-y-6">
+
+        <!-- レポートヘッダーバー -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div class="flex items-center space-x-2 mb-1">
+              <span class="bg-sky-100 text-sky-800 text-xs font-bold px-2.5 py-0.5 rounded-full">最新レポート</span>
+              <span id="reportHeaderDate" class="text-xs text-slate-500">2026年10月04日</span>
+            </div>
+            <h1 id="reportHeaderTitle" class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
+              【週次ビジネス成長レポート】最新AI・IT動向から紐解く新機軸アイデア
+            </h1>
+            <p id="reportHeaderMeta" class="text-xs text-slate-500 mt-1">
+              対象: HaveASite | 重点KPI: 既存顧客の月額解約率（Churn Rate）の低減 & 顧客LTV最大化
+            </p>
+          </div>
+
+          <!-- クイックアクション -->
+          <div class="flex flex-wrap items-center gap-2">
+            <button onclick="sendCurrentReportEmail()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-semibold px-3 py-2 rounded-xl text-xs transition flex items-center space-x-1.5 shadow-2xs">
+              <span>✉️</span>
+              <span>Gmail送信</span>
+            </button>
+            <button onclick="copyMarkdownReport()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-semibold px-3 py-2 rounded-xl text-xs transition flex items-center space-x-1.5 shadow-2xs">
+              <span>📋</span>
+              <span>Markdownコピー</span>
+            </button>
+            <button onclick="downloadMarkdownFile()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-semibold px-3 py-2 rounded-xl text-xs transition flex items-center space-x-1.5 shadow-2xs">
+              <span>💾</span>
+              <span>保存 (.md)</span>
+            </button>
+            <button onclick="window.print()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-semibold px-3 py-2 rounded-xl text-xs transition flex items-center space-x-1.5 shadow-2xs">
+              <span>🖨️</span>
+              <span>印刷 / PDF</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- マクロトレンド総括カード -->
+        <div class="bg-gradient-to-r from-sky-50 via-indigo-50 to-purple-50 border border-sky-100 rounded-2xl p-6 shadow-xs">
+          <div class="flex items-center space-x-2 mb-2">
+            <span class="text-xl">💡</span>
+            <h2 class="text-base font-bold text-sky-900">今週のマクロトレンド & 客観的総括</h2>
+          </div>
+          <p id="reportMacroTrend" class="text-sm text-slate-700 leading-relaxed font-normal">
+            マクロ動向の要約を読み込み中...
+          </p>
+        </div>
+
+        <!-- アイデアフィルターバー -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+          <div class="flex flex-wrap items-center gap-1.5" id="ideaFilterPills">
+            <button onclick="filterIdeas('all')" class="idea-filter-btn px-3 py-1.5 rounded-lg text-xs font-bold transition bg-slate-900 text-white" data-filter="all">すべて (<span id="countAll">0</span>)</button>
+            <button onclick="filterIdeas('japan')" class="idea-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-white text-slate-600 hover:bg-slate-100 border border-slate-200" data-filter="japan">🇯🇵 国内発想 (<span id="countJapan">0</span>)</button>
+            <button onclick="filterIdeas('global')" class="idea-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-white text-slate-600 hover:bg-slate-100 border border-slate-200" data-filter="global">🇺🇸 海外先行事例 (<span id="countGlobal">0</span>)</button>
+            <button onclick="filterIdeas('high')" class="idea-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-white text-slate-600 hover:bg-slate-100 border border-slate-200" data-filter="high">⚡ 高実現性 (<span id="countHigh">0</span>)</button>
+          </div>
+          <div class="relative">
+            <input type="text" id="ideaSearchInput" oninput="searchIdeas(this.value)" placeholder="アイデア内を検索..." class="w-full sm:w-64 pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
+            <span class="absolute left-2.5 top-2 text-slate-400 text-xs">🔍</span>
+          </div>
+        </div>
+
+        <!-- アイデアカード一覧 -->
+        <div id="ideasListContainer" class="space-y-6">
+          <!-- JSで動的レンダリングされます -->
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- 2. レポート生成スタジオ タブ -->
+    <!-- ========================================== -->
+    <div id="tab-generator" class="hidden space-y-6">
+      
+      <!-- 生成コントロール -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
+        <div class="flex items-center space-x-3 mb-4">
+          <div class="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center text-xl font-bold">
+            ⚡
+          </div>
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">レポート生成スタジオ</h2>
+            <p class="text-xs text-slate-500">最新のトレンド・先行SaaSを収集し、自社の成長戦略を多角的に立案します。</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div class="md:col-span-2">
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">🎯 一時的な注力テーマ・重点KPIの指定 (任意)</label>
+            <input type="text" id="genOverrideKpi" placeholder="空欄の場合は設定ファイル内のKPIが使用されます" class="w-full text-xs px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500">
+            <p class="text-2xs text-slate-400 mt-1">※ 今回の生成だけに反映させたい特定の課題やKPIがあれば入力してください。</p>
+          </div>
+
+          <div class="space-y-3 pt-4 md:pt-0">
+            <label class="flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" id="genDryRun" checked class="w-4 h-4 text-sky-600 rounded border-slate-300 focus:ring-sky-500">
+              <span class="text-xs font-semibold text-slate-700">テスト生成（Dry-run）</span>
+            </label>
+            <p class="text-2xs text-slate-400 pl-6">チェックを入れるとメール送信せず画面とファイル保存のみ行います。</p>
+
+            <label class="flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" id="genRefreshProfile" class="w-4 h-4 text-sky-600 rounded border-slate-300 focus:ring-sky-500">
+              <span class="text-xs font-semibold text-slate-700">自社プロファイルの強制再解析</span>
+            </label>
+            <p class="text-2xs text-slate-400 pl-6">HPや強みメモのキャッシュをクリアして再読み込みします。</p>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between border-t border-slate-100 pt-4">
+          <div class="text-xs text-slate-500">
+            実行時間: 約30〜60秒（記事スクレイピング & Web検索グラウンディングを含む）
+          </div>
+          <button id="btnStartGeneration" onclick="startGeneration()" class="bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 text-white font-bold px-6 py-2.5 rounded-xl shadow-sm text-sm transition flex items-center space-x-2">
+            <span>🚀</span>
+            <span>今すぐレポートを生成する</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 進捗ステッパー & プログレス -->
+      <div id="genProgressBox" class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-slate-900 flex items-center space-x-2">
+            <span id="genStatusIcon">⏳</span>
+            <span id="genStatusTitle">待機中</span>
+          </h3>
+          <span id="genPercentText" class="text-xs font-bold text-sky-600 bg-sky-50 px-2 py-1 rounded-md">0%</span>
+        </div>
+
+        <!-- プログレスバー -->
+        <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+          <div id="genProgressBar" class="bg-gradient-to-r from-sky-500 to-indigo-600 h-2.5 rounded-full transition-all duration-500 w-0"></div>
+        </div>
+
+        <!-- 4段階ステッパー -->
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+          <!-- Step 1 -->
+          <div id="stepCard1" class="border border-slate-200 rounded-xl p-3 bg-slate-50 text-slate-400 transition-all">
+            <div class="font-bold flex items-center justify-between">
+              <span>Step 1</span>
+              <span id="stepIcon1">⚪</span>
+            </div>
+            <div class="font-semibold text-slate-700 mt-1">自社プロファイル準備</div>
+            <div class="text-2xs text-slate-400 mt-0.5">強み・重点KPIの照合</div>
+          </div>
+
+          <!-- Step 2 -->
+          <div id="stepCard2" class="border border-slate-200 rounded-xl p-3 bg-slate-50 text-slate-400 transition-all">
+            <div class="font-bold flex items-center justify-between">
+              <span>Step 2</span>
+              <span id="stepIcon2">⚪</span>
+            </div>
+            <div class="font-semibold text-slate-700 mt-1">国内外ニュース収集</div>
+            <div class="text-2xs text-slate-400 mt-0.5">Product Hunt & RSS</div>
+          </div>
+
+          <!-- Step 3 -->
+          <div id="stepCard3" class="border border-slate-200 rounded-xl p-3 bg-slate-50 text-slate-400 transition-all">
+            <div class="font-bold flex items-center justify-between">
+              <span>Step 3</span>
+              <span id="stepIcon3">⚪</span>
+            </div>
+            <div class="font-semibold text-slate-700 mt-1">深掘り・攻守分析</div>
+            <div class="text-2xs text-slate-400 mt-0.5">本文解析 & 客観的辛口判定</div>
+          </div>
+
+          <!-- Step 4 -->
+          <div id="stepCard4" class="border border-slate-200 rounded-xl p-3 bg-slate-50 text-slate-400 transition-all">
+            <div class="font-bold flex items-center justify-between">
+              <span>Step 4</span>
+              <span id="stepIcon4">⚪</span>
+            </div>
+            <div class="font-semibold text-slate-700 mt-1">保存 & 通知処理</div>
+            <div class="text-2xs text-slate-400 mt-0.5">Markdown/JSON/Gmail</div>
+          </div>
+        </div>
+
+        <!-- 完了時アクションバナー -->
+        <div id="genSuccessBanner" class="hidden bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <div class="text-2xl">🎉</div>
+            <div>
+              <div class="text-sm font-bold text-emerald-900">新しい週次レポートが完成しました！</div>
+              <div class="text-xs text-emerald-700">ダッシュボードで最新のアイデアと分析結果を確認できます。</div>
+            </div>
+          </div>
+          <button onclick="loadLatestReportAndSwitch()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-lg shadow-sm transition">
+            👉 レポートを今すぐ見る
+          </button>
+        </div>
+
+        <!-- 実行ログコンソール -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-slate-600 flex items-center space-x-1.5">
+              <span>📟</span>
+              <span>リアルタイム実行ログ</span>
+            </span>
+            <span class="text-2xs text-slate-400">最新ログが自動スクロールされます</span>
+          </div>
+          <div id="genLogTerminal" class="custom-scrollbar bg-slate-900 text-slate-200 font-mono text-xs rounded-xl p-4 h-48 overflow-y-auto space-y-1 shadow-inner">
+            <div class="text-slate-500">// タスクの開始を待機しています...</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- 3. レポート履歴 タブ -->
+    <!-- ========================================== -->
+    <div id="tab-history" class="hidden space-y-6">
+      
+      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">過去の生成レポート履歴</h2>
+            <p class="text-xs text-slate-500">保存されたレポート（Markdown/JSON）を閲覧・再送信できます。</p>
+          </div>
+          <button onclick="fetchReportsList()" class="text-xs font-semibold text-sky-600 hover:text-sky-700 bg-sky-50 px-3 py-1.5 rounded-lg border border-sky-100 transition">
+            🔄 リストを更新
+          </button>
+        </div>
+
+        <!-- レポート一覧テーブル -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead>
+              <tr class="border-b border-slate-200 text-slate-400 font-semibold uppercase tracking-wider">
+                <th class="py-3 px-4">作成日時</th>
+                <th class="py-3 px-4">レポート名</th>
+                <th class="py-3 px-4">重点KPI</th>
+                <th class="py-3 px-4 text-center">アイデア数</th>
+                <th class="py-3 px-4 text-right">アクション</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody" class="divide-y divide-slate-100 text-slate-700">
+              <tr>
+                <td colspan="5" class="py-8 text-center text-slate-400">レポート履歴を読み込み中...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- 4. 戦略・KPI設定 タブ -->
+    <!-- ========================================== -->
+    <div id="tab-settings" class="hidden space-y-6">
+      
+      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
+        <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">戦略・設定マネージャー</h2>
+            <p class="text-xs text-slate-500">自社プロファイル、重点KPI、収集キーワード、通知先を直感的にカスタマイズできます。</p>
+          </div>
+          <button onclick="saveConfigToServer()" class="bg-sky-600 hover:bg-sky-700 text-white font-bold px-5 py-2 rounded-xl shadow-sm text-xs transition flex items-center space-x-1.5">
+            <span>💾</span>
+            <span>設定を保存する</span>
+          </button>
+        </div>
+
+        <div class="space-y-8">
+          
+          <!-- 1. 自社プロファイル -->
+          <div>
+            <h3 class="text-sm font-bold text-slate-900 mb-3 flex items-center space-x-1.5">
+              <span>🏢</span>
+              <span>1. 自社・サービス情報 & 強みアセット</span>
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">会社名 / サービス名</label>
+                <input type="text" id="cfgCompanyName" class="w-full text-xs px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-sky-500">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">公式ホームページURL</label>
+                <input type="url" id="cfgCompanyUrl" class="w-full text-xs px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-sky-500">
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-xs font-semibold text-slate-700 mb-1">自社の強み・提供価値・ターゲット顧客メモ</label>
+                <textarea id="cfgCompanyNotes" rows="5" class="w-full text-xs px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-sky-500 leading-relaxed font-mono"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. 直近の重点課題 & KPI -->
+          <div class="border-t border-slate-100 pt-6">
+            <h3 class="text-sm font-bold text-slate-900 mb-3 flex items-center space-x-1.5">
+              <span>🎯</span>
+              <span>2. 直近の重点課題 & 注力KPI (キャッシュ再生成なしで動的反映)</span>
+            </h3>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">重点KPI (最優先指標)</label>
+                <input type="text" id="cfgFocusKpi" class="w-full text-xs px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-sky-500 font-semibold text-sky-700">
+              </div>
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <label class="text-xs font-semibold text-slate-700">直近の切実な課題リスト</label>
+                  <button type="button" onclick="addUrgentIssueInput('')" class="text-2xs text-sky-600 hover:text-sky-700 font-bold bg-sky-50 px-2 py-0.5 rounded border border-sky-200">+ 課題を追加</button>
+                </div>
+                <div id="urgentIssuesContainer" class="space-y-2">
+                  <!-- 動的に追加されます -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. ニュース収集キーワード -->
+          <div class="border-t border-slate-100 pt-6">
+            <h3 class="text-sm font-bold text-slate-900 mb-3 flex items-center space-x-1.5">
+              <span>🔍</span>
+              <span>3. 国内ニュース収集キーワード</span>
+            </h3>
+            <div class="space-y-2">
+              <div class="flex items-center space-x-2">
+                <input type="text" id="newKeywordInput" placeholder="例: 店舗 DX 生成AI" class="flex-1 text-xs px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white">
+                <button type="button" onclick="addKeyword()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-4 py-2 rounded-xl font-semibold">追加</button>
+              </div>
+              <div id="keywordsTagsContainer" class="flex flex-wrap gap-1.5 pt-1">
+                <!-- タグが追加されます -->
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. 海外トレンド・先行SaaS設定 -->
+          <div class="border-t border-slate-100 pt-6">
+            <h3 class="text-sm font-bold text-slate-900 mb-3 flex items-center space-x-1.5">
+              <span>🇺🇸</span>
+              <span>4. 海外トレンド・先行SaaS事例 (Product Hunt / 米国動向)</span>
+            </h3>
+            <div class="space-y-3 bg-purple-50/50 border border-purple-100 p-4 rounded-xl">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-xs font-bold text-purple-950">海外ソースの自動収集を有効化</div>
+                  <div class="text-2xs text-purple-700">米国の最新SaaSやAIプロダクトからタイムマシン経営のヒントを得ます。</div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" id="cfgGlobalEnabled" class="sr-only peer">
+                  <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                </label>
+              </div>
+
+              <div class="flex items-center justify-between pt-2 border-t border-purple-100/50">
+                <span class="text-xs text-slate-700 font-medium">Product Hunt（最新AI/SaaS製品）の取得</span>
+                <input type="checkbox" id="cfgEnableProductHunt" class="w-4 h-4 text-purple-600 rounded">
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. 通知設定 -->
+          <div class="border-t border-slate-100 pt-6">
+            <h3 class="text-sm font-bold text-slate-900 mb-3 flex items-center space-x-1.5">
+              <span>✉️</span>
+              <span>5. 通知チャンネル & 宛先設定</span>
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">通知方法 (チャンネル)</label>
+                <select id="cfgNotificationChannel" class="w-full text-xs px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-sky-500">
+                  <option value="gmail">Gmail (推奨: HTMLメール送信)</option>
+                  <option value="outlook">Outlook (Windows デスクトップアプリ)</option>
+                  <option value="teams">Microsoft Teams (Webhook)</option>
+                  <option value="none">通知なし (ローカル保存のみ)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Gmail 受信先メールアドレス</label>
+                <input type="email" id="cfgGmailToEmail" placeholder="your_email@example.com" class="w-full text-xs px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-sky-500">
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="border-t border-slate-100 mt-8 pt-4 flex justify-end">
+          <button onclick="saveConfigToServer()" class="bg-sky-600 hover:bg-sky-700 text-white font-bold px-6 py-2.5 rounded-xl shadow-sm text-xs transition flex items-center space-x-1.5">
+            <span>💾</span>
+            <span>すべての設定を保存する</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- トースト通知コンテナ -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+  <!-- JavaScript ロジック -->
+  <script>
+    // グローバル状態
+    let currentConfig = {};
+    let currentReport = null;
+    let pollInterval = null;
+    let allIdeas = [];
+    let currentFilter = 'all';
+
+    // 初期化
+    document.addEventListener("DOMContentLoaded", () => {
+      fetchStatus();
+      loadLatestReport();
+      loadConfig();
+    });
+
+    // タブ切り替え
+    function switchTab(tabId) {
+      const tabs = ['dashboard', 'generator', 'history', 'settings'];
+      tabs.forEach(t => {
+        document.getElementById(`tab-${t}`).classList.add('hidden');
+        const navBtn = document.getElementById(`nav-${t}`);
+        if (navBtn) {
+          navBtn.classList.remove('bg-sky-50', 'text-sky-700');
+          navBtn.classList.add('text-slate-600');
+        }
+      });
+
+      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+      const activeNav = document.getElementById(`nav-${tabId}`);
+      if (activeNav) {
+        activeNav.classList.add('bg-sky-50', 'text-sky-700');
+        activeNav.classList.remove('text-slate-600');
+      }
+
+      if (tabId === 'history') {
+        fetchReportsList();
+      } else if (tabId === 'settings') {
+        loadConfig();
+      }
+    }
+
+    // トースト表示
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `pointer-events-auto px-4 py-3 rounded-xl shadow-lg text-xs font-semibold text-white transition-all transform duration-300 translate-y-4 opacity-0 flex items-center space-x-2 ${
+        type === 'success' ? 'bg-slate-900' : 'bg-rose-600'
+      }`;
+      toast.innerHTML = `<span>${type === 'success' ? '✅' : '⚠️'}</span><span>${message}</span>`;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-4', 'opacity-0');
+      }, 10);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-4');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // システムステータス取得
+    async function fetchStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        
+        if (data.current_kpi) {
+          document.getElementById('cardFocusKpi').textContent = data.current_kpi;
+        }
+        document.getElementById('cardNotification').textContent = data.channel.toUpperCase();
+        document.getElementById('cardNotificationDest').textContent = data.to_email || '送信元宛て';
+      } catch (e) {
+        console.error("Status fetch error", e);
+      }
+    }
+
+    // 最新レポート読み込み
+    async function loadLatestReport() {
+      try {
+        const res = await fetch('/api/reports');
+        const data = await res.json();
+        if (data.reports && data.reports.length > 0) {
+          const latest = data.reports[0];
+          await loadReportById(latest.id);
+        } else {
+          document.getElementById('emptyReportState').classList.remove('hidden');
+          document.getElementById('reportContentContainer').classList.add('hidden');
+        }
+      } catch (e) {
+        console.error("Report load error", e);
+      }
+    }
+
+    // 指定IDのレポート読み込み
+    async function loadReportById(reportId) {
+      try {
+        const res = await fetch(`/api/reports/${reportId}`);
+        const data = await res.json();
+        currentReport = data;
+        renderReport(data);
+        document.getElementById('emptyReportState').classList.add('hidden');
+        document.getElementById('reportContentContainer').classList.remove('hidden');
+      } catch (e) {
+        showToast("レポートの読み込みに失敗しました", "error");
+      }
+    }
+
+    // レポート描画
+    function renderReport(report) {
+      document.getElementById('reportHeaderTitle').textContent = report.report_title || '週次ビジネス成長レポート';
+      document.getElementById('reportHeaderDate').textContent = report.generated_at || '';
+      document.getElementById('cardReportDate').textContent = report.generated_at || '--';
+      document.getElementById('cardCompanyName').textContent = `対象企業: ${report.company_name || '--'}`;
+      
+      const kpi = report.focus_kpi || '設定なし';
+      document.getElementById('reportHeaderMeta').textContent = `対象: ${report.company_name || '--'} | 🎯 重点KPI: ${kpi}`;
+      document.getElementById('cardFocusKpi').textContent = kpi;
+
+      document.getElementById('reportMacroTrend').textContent = report.overall_trend_comment || '総括コメントはありません。';
+
+      allIdeas = report.ideas || [];
+      document.getElementById('cardIdeaCount').innerHTML = `${allIdeas.length} <span class="text-xs font-normal text-slate-500">件</span>`;
+      const globalCount = allIdeas.filter(i => i.is_global).length;
+      document.getElementById('cardGlobalCount').textContent = `うち海外先行事例: ${globalCount}件`;
+
+      // フィルタカウント
+      document.getElementById('countAll').textContent = allIdeas.length;
+      document.getElementById('countJapan').textContent = allIdeas.filter(i => !i.is_global).length;
+      document.getElementById('countGlobal').textContent = globalCount;
+      document.getElementById('countHigh').textContent = allIdeas.filter(i => (i.feasibility_rating || '').includes('高')).length;
+
+      filterIdeas(currentFilter);
+    }
+
+    // アイデアフィルター
+    function filterIdeas(type) {
+      currentFilter = type;
+      document.querySelectorAll('.idea-filter-btn').forEach(btn => {
+        if (btn.getAttribute('data-filter') === type) {
+          btn.className = "idea-filter-btn px-3 py-1.5 rounded-lg text-xs font-bold transition bg-slate-900 text-white";
+        } else {
+          btn.className = "idea-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-white text-slate-600 hover:bg-slate-100 border border-slate-200";
+        }
+      });
+
+      renderIdeasList();
+    }
+
+    // アイデア検索
+    function searchIdeas(query) {
+      renderIdeasList(query);
+    }
+
+    // アイデアカード一覧レンダリング
+    function renderIdeasList(searchQuery = '') {
+      const container = document.getElementById('ideasListContainer');
+      container.innerHTML = '';
+
+      let filtered = allIdeas.filter(item => {
+        if (currentFilter === 'japan' && item.is_global) return false;
+        if (currentFilter === 'global' && !item.is_global) return false;
+        if (currentFilter === 'high' && !(item.feasibility_rating || '').includes('高')) return false;
+        if (searchQuery) {
+          const q = searchQuery.toLowerCase();
+          const text = `${item.article_title} ${item.solution_idea} ${item.market_pain} ${item.source_summary}`.toLowerCase();
+          return text.includes(q);
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-400 text-xs">
+            該当するアイデアが見つかりませんでした。
+          </div>
+        `;
+        return;
+      }
+
+      filtered.forEach((idea, idx) => {
+        const card = document.createElement('div');
+        card.className = "bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4 hover:border-slate-300 transition";
+
+        const globalBadge = idea.is_global 
+          ? `<span class="bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded-full text-xs">🇺🇸 海外先行事例</span>`
+          : `<span class="bg-sky-100 text-sky-700 font-bold px-2 py-0.5 rounded-full text-xs">🇯🇵 国内発想</span>`;
+
+        let feasClass = "bg-slate-100 text-slate-700";
+        if ((idea.feasibility_rating || '').includes('高')) feasClass = "bg-emerald-100 text-emerald-800";
+        else if ((idea.feasibility_rating || '').includes('低')) feasClass = "bg-rose-100 text-rose-800";
+        else if ((idea.feasibility_rating || '').includes('中')) feasClass = "bg-amber-100 text-amber-800";
+
+        card.innerHTML = `
+          <!-- カード上部ヘッダー -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+            <div class="flex items-center space-x-2 flex-wrap gap-y-1">
+              <span class="w-6 h-6 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center justify-center">
+                ${idx + 1}
+              </span>
+              <h3 class="text-base font-bold text-slate-900">${idea.article_title}</h3>
+              ${globalBadge}
+              <span class="text-xs px-2 py-0.5 rounded-full font-semibold ${feasClass}">
+                ⚡ ${idea.feasibility_rating || '実現性: 未定'}
+              </span>
+            </div>
+            <a href="${idea.article_url}" target="_blank" class="text-xs font-semibold text-sky-600 hover:text-sky-700 hover:underline flex items-center space-x-1 whitespace-nowrap">
+              <span>元記事を読む</span>
+              <span>↗</span>
+            </a>
+          </div>
+
+          <!-- 記事ファクト要約 -->
+          <div class="bg-slate-50 border border-slate-200/60 rounded-xl p-3 text-xs text-slate-700 leading-relaxed">
+            <span class="font-bold text-slate-800">📰 記事のファクト要約:</span> ${idea.source_summary}
+          </div>
+
+          <!-- Web検索グラウンディング (市場背景) -->
+          ${idea.researched_facts ? `
+            <div class="bg-sky-50/70 border border-sky-200/70 rounded-xl p-3 text-xs text-sky-950 leading-relaxed">
+              <div class="font-bold text-sky-800 flex items-center space-x-1 mb-1">
+                <span>🔍</span>
+                <span>市場背景・競合リサーチ (Web検索グラウンディング):</span>
+              </div>
+              <div>${idea.researched_facts}</div>
+            </div>
+          ` : ''}
+
+          <!-- 日本市場ローカライズ (タイムマシン経営) -->
+          ${idea.localization_opportunity ? `
+            <div class="bg-purple-50/70 border border-purple-200/70 rounded-xl p-3 text-xs text-purple-950 leading-relaxed">
+              <div class="font-bold text-purple-800 flex items-center space-x-1 mb-1">
+                <span>🌐</span>
+                <span>日本市場へのローカライズ機会 (タイムマシン経営視点):</span>
+              </div>
+              <div>${idea.localization_opportunity}</div>
+            </div>
+          ` : ''}
+
+          <!-- 攻守の比較 2カラムグリッド -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
+            
+            <!-- 左カラム: 💡 攻めの事業企画 -->
+            <div class="bg-blue-50/40 border border-blue-100 rounded-xl p-4 space-y-3">
+              <div class="font-bold text-blue-900 text-xs flex items-center space-x-1 border-b border-blue-100 pb-2">
+                <span>💡</span>
+                <span>攻めの事業企画 (Solution & Monetization)</span>
+              </div>
+
+              <div class="text-xs space-y-2">
+                <div>
+                  <span class="font-bold text-orange-700">💥 課題 (Pain):</span>
+                  <p class="text-slate-700 mt-0.5">${idea.market_pain}</p>
+                </div>
+                <div>
+                  <span class="font-bold text-emerald-700">⚙️ 最新技術 (Tech):</span>
+                  <p class="text-slate-700 mt-0.5">${idea.latest_tech}</p>
+                </div>
+                <div>
+                  <span class="font-bold text-blue-700">💡 解決・事業案:</span>
+                  <p class="text-slate-900 font-semibold mt-0.5">${idea.solution_idea}</p>
+                </div>
+                <div>
+                  <span class="font-bold text-purple-700">💰 マネタイズモデル:</span>
+                  <p class="text-slate-700 mt-0.5">${idea.monetization_model}</p>
+                </div>
+                <div>
+                  <span class="font-bold text-rose-700">🎯 自社KPI貢献インパクト:</span>
+                  <p class="text-slate-900 font-semibold mt-0.5">${idea.kpi_impact}</p>
+                </div>
+                <div class="bg-white/80 p-2.5 rounded-lg border border-blue-100">
+                  <span class="font-bold text-blue-900">🚀 自社での最初のアクション:</span>
+                  <p class="text-slate-800 mt-0.5">${idea.internal_next_action}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- 右カラム: 🛡️ 守り・リスク評価 (参謀批判) -->
+            <div class="bg-rose-50/40 border border-rose-100 rounded-xl p-4 space-y-3">
+              <div class="font-bold text-rose-900 text-xs flex items-center space-x-1 border-b border-rose-100 pb-2">
+                <span>🛡️</span>
+                <span>守り・リスク評価 (Critical Defense & Risk)</span>
+              </div>
+
+              <div class="text-xs space-y-2">
+                <div>
+                  <span class="font-bold text-slate-800">⚡ 実現性・難易度:</span>
+                  <p class="text-slate-700 mt-0.5">${idea.feasibility_rating}</p>
+                </div>
+                <div>
+                  <span class="font-bold text-rose-700">⚠️ 最大リスク・参入障壁・やらない理由:</span>
+                  <p class="text-slate-700 mt-0.5">${idea.critical_risks}</p>
+                </div>
+                <div>
+                  <span class="font-bold text-amber-700">👥 顧客受容性・導入障壁 (個人店・中小):</span>
+                  <p class="text-slate-700 mt-0.5">${idea.customer_readiness}</p>
+                </div>
+                <div class="bg-white/80 p-2.5 rounded-lg border border-rose-100">
+                  <span class="font-bold text-rose-900">⚖️ 客観的参謀の辛口ジャッジ:</span>
+                  <p class="text-slate-800 mt-0.5 leading-relaxed">${idea.objective_verdict}</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- アクションフッター -->
+          <div class="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
+            <button onclick="copySingleIdea(${idx})" class="text-2xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition">
+              📋 アイデアをコピー
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // 単体アイデアのコピー
+    function copySingleIdea(idx) {
+      const idea = allIdeas[idx];
+      if (!idea) return;
+      const text = `【アイデア: ${idea.article_title}】\n- 課題: ${idea.market_pain}\n- 解決案: ${idea.solution_idea}\n- マネタイズ: ${idea.monetization_model}\n- 自社KPI貢献: ${idea.kpi_impact}\n- 最大リスク: ${idea.critical_risks}\n- 参謀判定: ${idea.objective_verdict}`;
+      navigator.clipboard.writeText(text);
+      showToast("アイデアのテキストをコピーしました！");
+    }
+
+    // レポート全体のMarkdownコピー
+    function copyMarkdownReport() {
+      if (!currentReport || !currentReport.raw_markdown) {
+        showToast("レポートデータがありません", "error");
+        return;
+      }
+      navigator.clipboard.writeText(currentReport.raw_markdown);
+      showToast("レポート全体のMarkdownをコピーしました！");
+    }
+
+    // Markdownダウンロード
+    function downloadMarkdownFile() {
+      if (!currentReport || !currentReport.raw_markdown) return;
+      const blob = new Blob([currentReport.raw_markdown], { type: 'text/markdown;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${currentReport.report_id || 'growth_report'}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("Markdownファイルをダウンロードしました");
+    }
+
+    // Gmail送信
+    async function sendCurrentReportEmail() {
+      if (!currentReport || !currentReport.report_id) {
+        showToast("送信対象のレポートがありません", "error");
+        return;
+      }
+      const confirmSend = confirm("このレポートをGmail宛てに送信しますか？");
+      if (!confirmSend) return;
+
+      try {
+        showToast("メールを送信中...");
+        const res = await fetch('/api/send_email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ report_id: currentReport.report_id })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.message || "メールを送信しました！");
+        } else {
+          showToast(data.error || "送信に失敗しました", "error");
+        }
+      } catch (e) {
+        showToast("通信エラーが発生しました", "error");
+      }
+    }
+
+    // レポート生成開始
+    async function startGeneration() {
+      const overrideKpi = document.getElementById('genOverrideKpi').value.trim();
+      const dryRun = document.getElementById('genDryRun').checked;
+      const refreshProfile = document.getElementById('genRefreshProfile').checked;
+
+      const btn = document.getElementById('btnStartGeneration');
+      btn.disabled = true;
+      btn.classList.add('opacity-50', 'cursor-not-allowed');
+
+      document.getElementById('genSuccessBanner').classList.add('hidden');
+
+      try {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            override_kpi: overrideKpi,
+            dry_run: dryRun,
+            refresh_profile: refreshProfile
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast("レポート生成タスクを開始しました！");
+          startPollingTask();
+        } else {
+          showToast(data.error || "開始できませんでした", "error");
+          btn.disabled = false;
+          btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+      } catch (e) {
+        showToast("生成リクエストに失敗しました", "error");
+        btn.disabled = false;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
+    }
+
+    // タスクポーリング
+    function startPollingTask() {
+      if (pollInterval) clearInterval(pollInterval);
+      pollInterval = setInterval(checkTaskStatus, 1500);
+      checkTaskStatus();
+    }
+
+    async function checkTaskStatus() {
+      try {
+        const res = await fetch('/api/task_status');
+        const task = await res.json();
+
+        // プログレスバー更新
+        document.getElementById('genProgressBar').style.width = `${task.progress}%`;
+        document.getElementById('genPercentText').textContent = `${task.progress}%`;
+
+        // ステータスタイトル
+        document.getElementById('genStatusTitle').textContent = task.step_name || '実行中...';
+
+        // ステッパー状態の更新
+        for (let s = 1; s <= 4; s++) {
+          const card = document.getElementById(`stepCard${s}`);
+          const icon = document.getElementById(`stepIcon${s}`);
+          if (task.current_step > s) {
+            card.className = "border border-emerald-300 rounded-xl p-3 bg-emerald-50 text-emerald-800 transition-all";
+            icon.textContent = "✅";
+          } else if (task.current_step === s) {
+            card.className = "border border-sky-400 rounded-xl p-3 bg-sky-50 text-sky-800 font-bold transition-all shadow-xs animate-pulse";
+            icon.textContent = "⏳";
+          } else {
+            card.className = "border border-slate-200 rounded-xl p-3 bg-slate-50 text-slate-400 transition-all";
+            icon.textContent = "⚪";
+          }
+        }
+
+        // ログ描画
+        const terminal = document.getElementById('genLogTerminal');
+        if (task.logs && task.logs.length > 0) {
+          terminal.innerHTML = task.logs.map(log => {
+            let color = "text-slate-300";
+            if (log.level === 'ERROR') color = "text-rose-400 font-bold";
+            else if (log.level === 'WARNING') color = "text-amber-300";
+            return `<div><span class="text-slate-500">[${log.time}]</span> <span class="${color}">${log.message}</span></div>`;
+          }).join('');
+          terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // 完了判定
+        if (task.status === 'completed') {
+          clearInterval(pollInterval);
+          document.getElementById('btnStartGeneration').disabled = false;
+          document.getElementById('btnStartGeneration').classList.remove('opacity-50', 'cursor-not-allowed');
+          document.getElementById('genSuccessBanner').classList.remove('hidden');
+          showToast("レポートの生成が完了しました！🎉");
+        } else if (task.status === 'error') {
+          clearInterval(pollInterval);
+          document.getElementById('btnStartGeneration').disabled = false;
+          document.getElementById('btnStartGeneration').classList.remove('opacity-50', 'cursor-not-allowed');
+          showToast(`エラーが発生しました: ${task.error}`, "error");
+        }
+      } catch (e) {
+        console.error("Polling error", e);
+      }
+    }
+
+    // 生成完了後にダッシュボードへ遷移
+    async function loadLatestReportAndSwitch() {
+      await loadLatestReport();
+      switchTab('dashboard');
+    }
+
+    // レポート履歴一覧取得
+    async function fetchReportsList() {
+      const tbody = document.getElementById('historyTableBody');
+      try {
+        const res = await fetch('/api/reports');
+        const data = await res.json();
+        const reports = data.reports || [];
+
+        if (reports.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400">レポート履歴はありません</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = reports.map(r => `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-3 px-4 font-mono text-slate-500">${r.created_at}</td>
+            <td class="py-3 px-4 font-bold text-slate-900">${r.title}</td>
+            <td class="py-3 px-4 text-sky-700 font-medium">${r.focus_kpi || '-'}</td>
+            <td class="py-3 px-4 text-center font-bold">${r.idea_count}</td>
+            <td class="py-3 px-4 text-right space-x-1.5 whitespace-nowrap">
+              <button onclick="viewReportFromHistory('${r.id}')" class="bg-sky-50 text-sky-700 hover:bg-sky-100 font-bold px-2.5 py-1 rounded-lg border border-sky-200 transition">
+                閲覧
+              </button>
+              <button onclick="sendReportEmailFromHistory('${r.id}')" class="bg-slate-50 text-slate-700 hover:bg-slate-100 font-semibold px-2 py-1 rounded-lg border border-slate-200 transition">
+                Gmail送信
+              </button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-rose-500">読み込みに失敗しました</td></tr>`;
+      }
+    }
+
+    async function viewReportFromHistory(repId) {
+      await loadReportById(repId);
+      switchTab('dashboard');
+    }
+
+    async function sendReportEmailFromHistory(repId) {
+      const confirmSend = confirm("この過去レポートをGmailで送信しますか？");
+      if (!confirmSend) return;
+      try {
+        const res = await fetch('/api/send_email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ report_id: repId })
+        });
+        const data = await res.json();
+        if (data.success) showToast(data.message || "送信しました！");
+        else showToast(data.error || "送信失敗", "error");
+      } catch (e) {
+        showToast("通信エラー", "error");
+      }
+    }
+
+    // 設定読み込み
+    async function loadConfig() {
+      try {
+        const res = await fetch('/api/config');
+        const cfg = await res.json();
+        currentConfig = cfg;
+
+        // フォームへ反映
+        const comp = cfg.company || {};
+        document.getElementById('cfgCompanyName').value = comp.name || '';
+        document.getElementById('cfgCompanyUrl').value = comp.url || '';
+        document.getElementById('cfgCompanyNotes').value = comp.notes || '';
+
+        const challenges = comp.current_challenges || {};
+        document.getElementById('cfgFocusKpi').value = challenges.focus_kpi || '';
+
+        // 課題リスト
+        const issuesContainer = document.getElementById('urgentIssuesContainer');
+        issuesContainer.innerHTML = '';
+        const issues = challenges.urgent_issues || [];
+        issues.forEach(issue => addUrgentIssueInput(issue));
+
+        // キーワードタグ
+        renderKeywordTags(cfg.news?.keywords || []);
+
+        // 海外設定
+        const glob = cfg.news?.global_sources || {};
+        document.getElementById('cfgGlobalEnabled').checked = !!glob.enabled;
+        document.getElementById('cfgEnableProductHunt').checked = !!glob.enable_product_hunt;
+
+        // 通知設定
+        const notif = cfg.notification || {};
+        document.getElementById('cfgNotificationChannel').value = notif.channel || 'gmail';
+        document.getElementById('cfgGmailToEmail').value = notif.gmail?.to_email || '';
+
+      } catch (e) {
+        console.error("Config load error", e);
+      }
+    }
+
+    // 課題入力行の追加
+    function addUrgentIssueInput(val = '') {
+      const container = document.getElementById('urgentIssuesContainer');
+      const div = document.createElement('div');
+      div.className = "flex items-center space-x-2";
+      div.innerHTML = `
+        <input type="text" value="${val}" class="urgent-issue-input flex-1 text-xs px-3.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white">
+        <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-rose-600 text-xs px-2 py-1">✕</button>
+      `;
+      container.appendChild(div);
+    }
+
+    // キーワードタグ描画
+    function renderKeywordTags(keywords) {
+      const container = document.getElementById('keywordsTagsContainer');
+      container.innerHTML = '';
+      keywords.forEach((kw, i) => {
+        const tag = document.createElement('span');
+        tag.className = "inline-flex items-center space-x-1.5 bg-sky-50 text-sky-800 border border-sky-200 text-xs px-2.5 py-1 rounded-lg font-medium";
+        tag.innerHTML = `
+          <span>${kw}</span>
+          <button type="button" onclick="removeKeyword(${i})" class="text-sky-400 hover:text-sky-700">✕</button>
+        `;
+        container.appendChild(tag);
+      });
+    }
+
+    function addKeyword() {
+      const input = document.getElementById('newKeywordInput');
+      const val = input.value.trim();
+      if (!val) return;
+      if (!currentConfig.news) currentConfig.news = {};
+      if (!currentConfig.news.keywords) currentConfig.news.keywords = [];
+      currentConfig.news.keywords.push(val);
+      renderKeywordTags(currentConfig.news.keywords);
+      input.value = '';
+    }
+
+    function removeKeyword(index) {
+      if (currentConfig.news && currentConfig.news.keywords) {
+        currentConfig.news.keywords.splice(index, 1);
+        renderKeywordTags(currentConfig.news.keywords);
+      }
+    }
+
+    // 設定保存
+    async function saveConfigToServer() {
+      // フォームから currentConfig を構築
+      if (!currentConfig.company) currentConfig.company = {};
+      currentConfig.company.name = document.getElementById('cfgCompanyName').value;
+      currentConfig.company.url = document.getElementById('cfgCompanyUrl').value;
+      currentConfig.company.notes = document.getElementById('cfgCompanyNotes').value;
+
+      if (!currentConfig.company.current_challenges) currentConfig.company.current_challenges = {};
+      currentConfig.company.current_challenges.focus_kpi = document.getElementById('cfgFocusKpi').value;
+
+      const issueInputs = document.querySelectorAll('.urgent-issue-input');
+      const issues = [];
+      issueInputs.forEach(inp => {
+        if (inp.value.trim()) issues.push(inp.value.trim());
+      });
+      currentConfig.company.current_challenges.urgent_issues = issues;
+
+      if (!currentConfig.news) currentConfig.news = {};
+      if (!currentConfig.news.global_sources) currentConfig.news.global_sources = {};
+      currentConfig.news.global_sources.enabled = document.getElementById('cfgGlobalEnabled').checked;
+      currentConfig.news.global_sources.enable_product_hunt = document.getElementById('cfgEnableProductHunt').checked;
+
+      if (!currentConfig.notification) currentConfig.notification = {};
+      currentConfig.notification.channel = document.getElementById('cfgNotificationChannel').value;
+      if (!currentConfig.notification.gmail) currentConfig.notification.gmail = {};
+      currentConfig.notification.gmail.to_email = document.getElementById('cfgGmailToEmail').value;
+
+      try {
+        const res = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(currentConfig)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast("設定を正常に保存しました！");
+          fetchStatus();
+        } else {
+          showToast(data.error || "設定保存に失敗しました", "error");
+        }
+      } catch (e) {
+        showToast("通信エラーが発生しました", "error");
+      }
+    }
+  </script>
+</body>
+</html>

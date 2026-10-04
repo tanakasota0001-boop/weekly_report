@@ -12,7 +12,9 @@ ENV/
 # キャッシュ & 出力レポート
 cache/
 reports/*.md
+reports/*.json
 !reports/.gitkeep
+!reports/*sample*
 
 # OS
 .DS_Store

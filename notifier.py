@@ -1,43 +1,53 @@
 import os
 import json
 import logging
-import requests
 from datetime import datetime
-from models import WeeklyReport
+
+from typing import Any
+
+try:
+    from models import WeeklyReport
+except Exception:
+    WeeklyReport = Any
 
 logger = logging.getLogger(__name__)
 
 REPORTS_DIR = "reports"
 
 
-def format_report_to_markdown(report: WeeklyReport) -> str:
+def format_report_to_markdown(report: Any) -> str:
     """レポートを読みやすいMarkdown形式にフォーマットする"""
     md = f"# {report.report_title}\n\n"
-    md += f"**対象部門/企業:** {report.company_name} | **生成日:** {report.generated_at}\n\n"
+    kpi_meta = f" | **🎯 重点KPI:** {report.focus_kpi}" if report.focus_kpi else ""
+    md += f"**対象部門/企業:** {report.company_name} | **生成日:** {report.generated_at}{kpi_meta}\n\n"
     
     md += "## 💡 今週のマクロトレンド & 総括\n"
     md += f"{report.overall_trend_comment}\n\n"
     md += "---\n\n"
 
     for idx, idea in enumerate(report.ideas, 1):
-        md += f"## 🚀 アイデア {idx}: {idea.article_title}\n"
+        global_badge = " [🇺🇸 海外先行事例]" if idea.is_global else ""
+        md += f"## 🚀 アイデア {idx}: {idea.article_title}{global_badge}\n"
         md += f"- **元記事リンク:** [{idea.article_title}]({idea.article_url})\n"
         md += f"- **記事の要約:** {idea.source_summary}\n\n"
+        if idea.researched_facts:
+            md += f"- **🔍 市場背景・競合動向 (Webリサーチ):**\n  > {idea.researched_facts}\n\n"
+        if idea.localization_opportunity:
+            md += f"- **🌐 日本市場へのローカライズ機会 (タイムマシン経営):**\n  > {idea.localization_opportunity}\n\n"
         
-        md += "### 1. 世の中の課題（Pain）\n"
-        md += f"{idea.market_pain}\n\n"
+        md += "### 💡 攻めの事業企画 (Solution & Monetization)\n"
+        md += f"- **世の中の課題 (Pain):** {idea.market_pain}\n"
+        md += f"- **活用技術 (Tech):** {idea.latest_tech}\n"
+        md += f"- **解決・事業化案:** {idea.solution_idea}\n"
+        md += f"- **マネタイズモデル:** {idea.monetization_model}\n"
+        md += f"- **🎯 自社KPIへの貢献:** {idea.kpi_impact}\n"
+        md += f"- **自社での最初の打ち手:** {idea.internal_next_action}\n\n"
 
-        md += "### 2. 活用されている技術・手法（Tech）\n"
-        md += f"{idea.latest_tech}\n\n"
-
-        md += "### 3. あなたならどう解決・事業化するか（Solution & Idea）\n"
-        md += f"{idea.solution_idea}\n\n"
-
-        md += "### 4. マネタイズ・ビジネスモデル（How to Monetize）\n"
-        md += f"{idea.monetization_model}\n\n"
-
-        md += "### 5. 自社における検証論点・打ち手（Next Action）\n"
-        md += f"{idea.internal_next_action}\n\n"
+        md += "### 🛡️ 守り・リスク評価 (Critical Defense & Risk)\n"
+        md += f"- **実現性・難易度:** {idea.feasibility_rating}\n"
+        md += f"- **最大の盲点・参入障壁:** {idea.critical_risks}\n"
+        md += f"- **顧客受容性・導入障壁:** {idea.customer_readiness}\n"
+        md += f"- **⚖️ 客観的参謀の辛口ジャッジ:**\n  > {idea.objective_verdict}\n\n"
 
         md += "---\n\n"
 
@@ -48,57 +58,128 @@ def format_report_to_html(report: WeeklyReport) -> str:
     """Outlookメール用のリッチで美しいHTMLメール本文を生成する"""
     ideas_html = ""
     for idx, idea in enumerate(report.ideas, 1):
+        global_badge = '<span style="background-color: #5c2d91; color: #ffffff; font-size: 11px; font-weight: normal; padding: 2px 8px; border-radius: 10px; margin-left: 8px; vertical-align: middle;">🇺🇸 海外先行事例</span>' if idea.is_global else ''
+
+        researched_box = ""
+        if idea.researched_facts:
+            researched_box = f"""
+            <div style="background-color: #f0f7ff; border-left: 4px solid #0078d4; padding: 10px 14px; border-radius: 0 4px 4px 0; margin-bottom: 12px; font-size: 13px; line-height: 1.5; color: #106ebe;">
+                <strong>🔍 市場背景・競合リサーチ (Web検索):</strong><br>
+                <span style="color: #201f1e;">{idea.researched_facts}</span>
+            </div>
+            """
+
+        localization_box = ""
+        if idea.localization_opportunity:
+            localization_box = f"""
+            <div style="background-color: #f5f0fb; border-left: 4px solid #5c2d91; padding: 10px 14px; border-radius: 0 4px 4px 0; margin-bottom: 12px; font-size: 13px; line-height: 1.5; color: #5c2d91;">
+                <strong>🌐 日本市場へのローカライズ機会 (タイムマシン経営):</strong><br>
+                <span style="color: #201f1e;">{idea.localization_opportunity}</span>
+            </div>
+            """
+
         ideas_html += f"""
-        <div style="margin-bottom: 25px; padding: 20px; background-color: #ffffff; border: 1px solid #e1dfdd; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+        <div style="margin-bottom: 30px; padding: 22px; background-color: #ffffff; border: 1px solid #e1dfdd; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.06);">
             <h3 style="margin-top: 0; color: #0078d4; font-size: 18px; border-bottom: 2px solid #0078d4; padding-bottom: 8px;">
-                🚀 アイデア {idx}: {idea.article_title}
+                🚀 アイデア {idx}: {idea.article_title} {global_badge}
             </h3>
             <p style="font-size: 13px; color: #605e5c; margin-bottom: 12px;">
                 <strong>📰 元記事:</strong> <a href="{idea.article_url}" target="_blank" style="color: #0078d4; text-decoration: none;">元記事を読む ↗</a>
             </p>
-            <div style="background-color: #f3f2f1; padding: 10px 14px; border-radius: 4px; margin-bottom: 16px; font-size: 14px; line-height: 1.5;">
+            <div style="background-color: #f3f2f1; padding: 10px 14px; border-radius: 4px; margin-bottom: 12px; font-size: 14px; line-height: 1.5;">
                 <strong>記事のファクト要約:</strong> {idea.source_summary}
             </div>
+            {researched_box}
+            {localization_box}
 
-            <table style="width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.6;">
+            <h4 style="margin: 16px 0 8px 0; font-size: 15px; color: #106ebe; border-bottom: 1px dashed #c8c6c4; padding-bottom: 4px;">
+                💡 攻めの事業企画 (Solution & Monetization)
+            </h4>
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.6; margin-bottom: 16px;">
                 <tr>
-                    <td style="width: 25%; font-weight: bold; color: #d83b01; padding: 8px 0; vertical-align: top;">
+                    <td style="width: 25%; font-weight: bold; color: #d83b01; padding: 6px 0; vertical-align: top;">
                         💥 課題 (Pain)
                     </td>
-                    <td style="padding: 8px 0; color: #323130;">
+                    <td style="padding: 6px 0; color: #323130;">
                         {idea.market_pain}
                     </td>
                 </tr>
                 <tr>
-                    <td style="font-weight: bold; color: #107c41; padding: 8px 0; vertical-align: top;">
+                    <td style="font-weight: bold; color: #107c41; padding: 6px 0; vertical-align: top;">
                         ⚙️ 最新技術 (Tech)
                     </td>
-                    <td style="padding: 8px 0; color: #323130;">
+                    <td style="padding: 6px 0; color: #323130;">
                         {idea.latest_tech}
                     </td>
                 </tr>
                 <tr>
-                    <td style="font-weight: bold; color: #0078d4; padding: 8px 0; vertical-align: top;">
+                    <td style="font-weight: bold; color: #0078d4; padding: 6px 0; vertical-align: top;">
                         💡 解決・事業案
                     </td>
-                    <td style="padding: 8px 0; color: #323130; font-weight: 500;">
+                    <td style="padding: 6px 0; color: #323130; font-weight: 500;">
                         {idea.solution_idea}
                     </td>
                 </tr>
                 <tr>
-                    <td style="font-weight: bold; color: #8764b8; padding: 8px 0; vertical-align: top;">
+                    <td style="font-weight: bold; color: #8764b8; padding: 6px 0; vertical-align: top;">
                         💰 マネタイズ
                     </td>
-                    <td style="padding: 8px 0; color: #323130;">
+                    <td style="padding: 6px 0; color: #323130;">
                         {idea.monetization_model}
                     </td>
                 </tr>
                 <tr>
-                    <td style="font-weight: bold; color: #004e8c; padding: 8px 0; vertical-align: top;">
-                        🎯 自社の打ち手
+                    <td style="font-weight: bold; color: #d83b01; padding: 6px 0; vertical-align: top;">
+                        🎯 KPI貢献
                     </td>
-                    <td style="padding: 8px 0; color: #323130; background-color: #f0f7ff; padding: 8px; border-radius: 4px;">
+                    <td style="padding: 6px 0; color: #323130; font-weight: 500;">
+                        {idea.kpi_impact}
+                    </td>
+                </tr>
+                <tr>
+                    <td style="font-weight: bold; color: #004e8c; padding: 6px 0; vertical-align: top;">
+                        🚀 自社の打ち手
+                    </td>
+                    <td style="padding: 6px 0; color: #323130; background-color: #f0f7ff; padding: 6px 8px; border-radius: 4px;">
                         {idea.internal_next_action}
+                    </td>
+                </tr>
+            </table>
+
+            <h4 style="margin: 16px 0 8px 0; font-size: 15px; color: #a80000; border-bottom: 1px dashed #c8c6c4; padding-bottom: 4px;">
+                🛡️ 守り・リスク評価 (Critical Defense & Risk)
+            </h4>
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.6;">
+                <tr>
+                    <td style="width: 25%; font-weight: bold; color: #5c2d91; padding: 6px 0; vertical-align: top;">
+                        ⚡ 実現性・難易度
+                    </td>
+                    <td style="padding: 6px 0; color: #323130;">
+                        {idea.feasibility_rating}
+                    </td>
+                </tr>
+                <tr>
+                    <td style="font-weight: bold; color: #a80000; padding: 6px 0; vertical-align: top;">
+                        ⚠️ 最大の盲点・障壁
+                    </td>
+                    <td style="padding: 6px 0; color: #323130; background-color: #fff4f4; padding: 6px 8px; border-radius: 4px;">
+                        {idea.critical_risks}
+                    </td>
+                </tr>
+                <tr>
+                    <td style="font-weight: bold; color: #498205; padding: 6px 0; vertical-align: top;">
+                        👥 顧客の受容性
+                    </td>
+                    <td style="padding: 6px 0; color: #323130;">
+                        {idea.customer_readiness}
+                    </td>
+                </tr>
+                <tr>
+                    <td style="font-weight: bold; color: #004b50; padding: 6px 0; vertical-align: top;">
+                        ⚖️ 参謀の辛口ジャッジ
+                    </td>
+                    <td style="padding: 6px 0; color: #201f1e; background-color: #f6f8fa; font-weight: 500; padding: 6px 8px; border-left: 3px solid #004b50;">
+                        {idea.objective_verdict}
                     </td>
                 </tr>
             </table>
@@ -117,7 +198,7 @@ def format_report_to_html(report: WeeklyReport) -> str:
             <div style="background: linear-gradient(135deg, #0078d4, #106ebe); color: #ffffff; padding: 24px; border-radius: 8px; margin-bottom: 20px;">
                 <h1 style="margin: 0 0 8px 0; font-size: 22px;">{report.report_title}</h1>
                 <p style="margin: 0; font-size: 13px; opacity: 0.9;">
-                    対象: {report.company_name} | 発行日: {report.generated_at}
+                    対象: {report.company_name} | 発行日: {report.generated_at}{f' | 🎯 重点KPI: {report.focus_kpi}' if report.focus_kpi else ''}
                 </p>
             </div>
 
@@ -136,7 +217,7 @@ def format_report_to_html(report: WeeklyReport) -> str:
 
             <!-- フッター -->
             <div style="text-align: center; font-size: 12px; color: #a19f9d; margin-top: 30px; border-top: 1px solid #edebe9; padding-top: 15px;">
-                本レポートは事業開発部向けAIエージェントにより自動生成されました。
+                本レポートはビジネス成長AIエージェントにより自動生成されました。
             </div>
         </div>
     </body>
@@ -146,17 +227,155 @@ def format_report_to_html(report: WeeklyReport) -> str:
 
 
 def save_markdown_report(report: WeeklyReport) -> str:
-    """レポートをローカルファイルに保存する"""
+    """レポートをローカルファイル（Markdown および JSON）に保存する"""
     os.makedirs(REPORTS_DIR, exist_ok=True)
-    filename = f"bizdev_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    filename = f"growth_report_{timestamp}.md"
     filepath = os.path.join(REPORTS_DIR, filename)
 
     content = format_report_to_markdown(report)
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(content)
 
+    # Web UIや再利用向けに構造化JSONも同名で保存
+    json_filepath = os.path.join(REPORTS_DIR, f"growth_report_{timestamp}.json")
+    try:
+        with open(json_filepath, "w", encoding="utf-8") as f:
+            f.write(report.model_dump_json(indent=2))
+    except Exception as e:
+        logger.warning(f"JSONレポートの保存に失敗しました: {e}")
+
     logger.info(f"レポートを保存しました: {filepath}")
     return filepath
+
+
+def load_report_data(report_id: str) -> dict:
+    """指定されたレポートIDの構造化データとMarkdownを取得する"""
+    json_path = os.path.join(REPORTS_DIR, f"{report_id}.json")
+    md_path = os.path.join(REPORTS_DIR, f"{report_id}.md")
+
+    data = {}
+    if os.path.exists(json_path):
+        try:
+            with open(json_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception as e:
+            logger.warning(f"JSON読み込み失敗: {e}")
+
+    raw_markdown = ""
+    if os.path.exists(md_path):
+        with open(md_path, "r", encoding="utf-8") as f:
+            raw_markdown = f.read()
+
+    data["raw_markdown"] = raw_markdown
+    data["report_id"] = report_id
+    return data
+
+
+def list_saved_reports() -> list:
+    """保存された全レポートの一覧をメタデータ付きで取得する（新しい順）"""
+    if not os.path.exists(REPORTS_DIR):
+        return []
+
+    files = os.listdir(REPORTS_DIR)
+    reports = []
+    seen_ids = set()
+
+    for f in sorted(files, reverse=True):
+        if f.endswith(".json") or f.endswith(".md"):
+            rep_id = os.path.splitext(f)[0]
+            if rep_id in seen_ids or rep_id == ".gitkeep":
+                continue
+            seen_ids.add(rep_id)
+
+            item = {
+                "id": rep_id,
+                "created_at": rep_id.replace("growth_report_", "").replace("bizdev_report_", ""),
+                "title": "週次ビジネス成長レポート",
+                "focus_kpi": None,
+                "company_name": "",
+                "idea_count": 0,
+                "macro_trend": "",
+                "has_json": os.path.exists(os.path.join(REPORTS_DIR, f"{rep_id}.json")),
+                "has_md": os.path.exists(os.path.join(REPORTS_DIR, f"{rep_id}.md")),
+            }
+
+            # JSONがあれば詳細メタデータを吸い出す
+            if item["has_json"]:
+                try:
+                    with open(os.path.join(REPORTS_DIR, f"{rep_id}.json"), "r", encoding="utf-8") as jf:
+                        jdata = json.load(jf)
+                        item["title"] = jdata.get("report_title", item["title"])
+                        item["focus_kpi"] = jdata.get("focus_kpi")
+                        item["company_name"] = jdata.get("company_name", "")
+                        item["macro_trend"] = jdata.get("overall_trend_comment", "")
+                        item["idea_count"] = len(jdata.get("ideas", []))
+                        if "generated_at" in jdata:
+                            item["created_at"] = jdata["generated_at"]
+                except Exception:
+                    pass
+            elif item["has_md"]:
+                # Markdownからタイトルを簡易抽出
+                try:
+                    with open(os.path.join(REPORTS_DIR, f"{rep_id}.md"), "r", encoding="utf-8") as mf:
+                        first_line = mf.readline().strip().lstrip("#").strip()
+                        if first_line:
+                            item["title"] = first_line
+                except Exception:
+                    pass
+
+            reports.append(item)
+
+    return reports
+
+
+def send_via_gmail(
+    report: WeeklyReport,
+    gmail_user: str,
+    gmail_password: str,
+    to_email: str
+) -> bool:
+    """
+    GmailのSMTPサーバー経由でリッチHTMLメールを送信する
+    Mac、Windows、Linux、GitHub Actions問わず動作します。
+    """
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+
+    if not gmail_user or not gmail_password:
+        logger.error("Gmailの認証情報（GMAIL_USER または GMAIL_APP_PASSWORD）が設定されていません。")
+        return False
+
+    if not to_email:
+        to_email = gmail_user
+
+    try:
+        logger.info(f"Gmail経由でメールを送信中... (送信元: {gmail_user}, 宛先: {to_email})")
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = report.report_title
+        msg["From"] = f"ビジネス成長AI参謀 <{gmail_user}>"
+        msg["To"] = to_email
+
+        # プレーンテキスト版とHTML版を添付
+        text_part = MIMEText(format_report_to_markdown(report), "plain", "utf-8")
+        html_part = MIMEText(format_report_to_html(report), "html", "utf-8")
+        msg.attach(text_part)
+        msg.attach(html_part)
+
+        # smtp.gmail.com:587 (STARTTLS)
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=20) as server:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(gmail_user, gmail_password)
+            server.sendmail(gmail_user, [to_email], msg.as_string())
+
+        logger.info("Gmailからのメール送信が正常に完了しました！")
+        return True
+    except Exception as e:
+        logger.error(f"Gmail送信中にエラーが発生しました: {e}")
+        return False
 
 
 def send_via_outlook(report: WeeklyReport, to_email: str, display_only: bool = False) -> bool:
@@ -233,6 +452,7 @@ def build_adaptive_card(report: WeeklyReport) -> dict:
     ]
 
     for idx, idea in enumerate(report.ideas, 1):
+        global_tag = "[🇺🇸海外] " if idea.is_global else ""
         idea_card = {
             "type": "Container",
             "separator": True,
@@ -242,18 +462,26 @@ def build_adaptive_card(report: WeeklyReport) -> dict:
                     "size": "Medium",
                     "weight": "Bolder",
                     "color": "Accent",
-                    "text": f"🚀 アイデア {idx}: {idea.article_title}",
+                    "text": f"🚀 アイデア {idx}: {global_tag}{idea.article_title}",
                     "wrap": True
                 },
                 {
                     "type": "FactSet",
                     "facts": [
                         {"title": "記事要約", "value": idea.source_summary},
+                    ] + ([{"title": "市場/競合リサーチ", "value": idea.researched_facts}] if idea.researched_facts else []) + (
+                        [{"title": "🌐ローカライズ", "value": idea.localization_opportunity}] if idea.localization_opportunity else []
+                    ) + [
                         {"title": "課題(Pain)", "value": idea.market_pain},
                         {"title": "最新技術", "value": idea.latest_tech},
                         {"title": "事業アイデア", "value": idea.solution_idea},
                         {"title": "マネタイズ", "value": idea.monetization_model},
-                        {"title": "自社の打ち手", "value": idea.internal_next_action}
+                        {"title": "🎯KPI貢献", "value": idea.kpi_impact},
+                        {"title": "自社の打ち手", "value": idea.internal_next_action},
+                        {"title": "⚡実現性/難易度", "value": idea.feasibility_rating},
+                        {"title": "⚠️最大リスク/障壁", "value": idea.critical_risks},
+                        {"title": "👥顧客受容性", "value": idea.customer_readiness},
+                        {"title": "⚖️参謀判定", "value": idea.objective_verdict}
                     ]
                 },
                 {
@@ -288,10 +516,16 @@ def build_adaptive_card(report: WeeklyReport) -> dict:
     return payload
 
 
-def send_to_teams(webhook_url: str, report: WeeklyReport) -> bool:
+def send_to_teams(webhook_url: str, report) -> bool:
     """TeamsのIncoming Webhookにレポートを送信する（チャネルまたはチャット宛て）"""
     if not webhook_url or "your_teams_webhook_url" in webhook_url:
         logger.warning("Teams Webhook URLが設定されていないため、Teams送信をスキップします。")
+        return False
+
+    try:
+        import requests
+    except ImportError:
+        logger.error("Teams送信には requests パッケージが必要です ('pip install requests')。")
         return False
 
     payload = build_adaptive_card(report)

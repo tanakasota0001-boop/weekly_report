@@ -51,9 +51,10 @@ def build_company_profile(
     name: str,
     url: str,
     notes: str,
-    force_refresh: bool = False
+    force_refresh: bool = False,
+    current_challenges: Optional[dict] = None
 ) -> CompanyProfile:
-    """自社URLと補足情報から、事業開発用の企業プロファイルを生成・キャッシュする"""
+    """自社URLと補足情報から、ビジネス成長・新機軸創出のための企業プロファイルを生成・キャッシュする"""
     os.makedirs(CACHE_DIR, exist_ok=True)
 
     # キャッシュが存在し、再生成フラグが立っていない場合はキャッシュを返す
@@ -62,7 +63,10 @@ def build_company_profile(
             with open(CACHE_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 logger.info("キャッシュされた自社プロファイルを読み込みました。")
-                return CompanyProfile(**data)
+                profile = CompanyProfile(**data)
+                # 直近の課題・KPIは動的に最新のものを注入
+                profile.current_challenges = current_challenges
+                return profile
         except Exception as e:
             logger.warning(f"キャッシュの読み込みに失敗したため、再生成します: {e}")
 
@@ -73,12 +77,12 @@ def build_company_profile(
     client = genai.Client(api_key=api_key)
 
     system_instruction = """
-あなたはトップクラスの事業開発（BizDev）ストラテジストです。
-入力された企業のWebサイト情報や補足指示を分析し、新規事業創出のベースとなる「自社プロファイル」を構造化して出力してください。
+あなたはトップクラスのビジネス成長ストラテジスト・客観的戦略参謀です。
+入力された企業のWebサイト情報や補足指示を分析し、ビジネス成長・新機軸創出のベースとなる「自社プロファイル」を構造化して出力してください。
 """
 
     prompt = f"""
-以下の企業情報をもとに、新規事業開発を行うための自社プロファイルを整理してください。
+以下の企業情報をもとに、ビジネス成長・新機軸創出を行うための自社プロファイルを整理してください。
 
 【会社・事業部名】
 {name}
@@ -117,6 +121,7 @@ def build_company_profile(
 
     profile_data = json.loads(response.text)
     profile = CompanyProfile(**profile_data)
+    profile.current_challenges = current_challenges
 
     # キャッシュに保存
     with open(CACHE_FILE, "w", encoding="utf-8") as f:

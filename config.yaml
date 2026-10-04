@@ -1,5 +1,5 @@
 # ==========================================
-# 事業開発AIエージェント 設定ファイル
+# ビジネス成長AIエージェント 設定ファイル
 # ==========================================
 
 # 1. 自社・ユーザープロファイル設定
@@ -12,7 +12,7 @@ company:
   url: "https://haveasite.com/"
 
   # 自由記述指示・補足情報
-  # ※自社の強み、保有アセット、事業開発で注力したい関心領域
+  # ※自社の強み、保有アセット、今後の成長に向けて注力したい関心領域
   notes: |
     【サービス概要】
     「契約前に実物を作るサブスク型ホームページ制作」
@@ -28,14 +28,22 @@ company:
     - 初期0円・月額8,800円の圧倒的コストパフォーマンスと明瞭なサブスクモデル
     - スモールビジネス特化の企画・デザイン・運用保守のワンストップ体制
 
-    【事業開発部としての検討・注力テーマ】
+    【今後の検討・注力テーマ】
     1. 生成AIを活用したHP制作・コンテンツ生成の自動化・工数削減（利益率向上）
     2. 個人店向けの集客支援（MEO/Googleビジネスプロフィール連携、LINE公式、AI口コミ返信、AI予約等）の追加オプション・クロスセル
     3. 小規模事業者が直面する「人手不足」「集客難」「ITリテラシー格差」を解決する新サービス・新マネタイズモデルの創出
 
+  # 直近の重点課題 & 注力KPI（キャッシュ再生成なしで動的に分析へ反映されます）
+  current_challenges:
+    focus_kpi: "既存顧客の月額解約率（Churn Rate）の低減 & 顧客LTV最大化"
+    urgent_issues:
+      - "「HP公開後に更新・活用方法がわからない」店舗オーナーの放置・離脱防止"
+      - "店舗集客に直結するオプション（MEO連携、AI口コミ返信、LINE連携）のクロスセル"
+      - "顧客対応・更新作業にかかる運用工数の削減（粗利率向上）"
+
 # 2. ニュース収集設定
 news:
-  # 収集対象のキーワード（HaveASiteのターゲットや技術動向に特化）
+  # 国内ニュース収集キーワード（HaveASiteのターゲットや技術動向に特化）
   keywords:
     - "店舗 DX AI"
     - "小規模事業者 集客 AI"
@@ -43,19 +51,49 @@ news:
     - "MEO Googleビジネスプロフィール"
     - "中小企業 IT導入 課題"
   
-  # 1回の実行で収集する最大記事数
-  max_articles_to_collect: 25
+  # 国内ニュースの最大収集件数
+  max_articles_to_collect: 20
+
+  # 海外トレンド・先行SaaS事例（Product Hunt / 米国Tech動向）
+  global_sources:
+    # 海外ソースの収集を有効化するかどうか
+    enabled: true
+    # 収集する最大海外プロダクト・記事数
+    max_articles_to_collect: 10
+    # Product Hunt（最新AI/SaaSプロダクト）の取得
+    enable_product_hunt: true
+    # 米国Google News（英語）の検索キーワード
+    us_keywords:
+      - "AI tool for small business"
+      - "SMB SaaS AI automation"
+      - "local business AI tools"
+      - "AI website builder"
 
   # スクリーニング後に詳細レポートを作成する上位記事数
   top_articles_to_report: 3
 
-# 3. 通知・出力設定
-notification:
-  # 送信方法: "outlook" または "teams" または "none"（ローカル保存のみ）
-  # ※Outlookメールで受け取る場合は "outlook" を指定してください
-  channel: "outlook"
+# 3. リサーチ・分析設定 (NEW)
+research:
+  # 上位選定記事の本文Webスクレイピングを行うかどうか
+  enable_scraping: true
+  # スクレイピングで取得する本文の最大文字数
+  max_article_chars: 3500
 
-  # Outlook設定 (WindowsのOutlookアプリから自動送信)
+  # GeminiのGoogle Search Grounding（Web検索）で市場背景や競合事例を追加調査するかどうか
+  enable_search_grounding: true
+
+# 4. 通知・出力設定
+notification:
+  # 送信方法: "gmail", "outlook", "teams", "none"（ローカル保存のみ）
+  # ※MacやLinux、サーバー環境では "gmail" が推奨です
+  channel: "gmail"
+
+  # Gmail設定 (Mac/Windows/Linux対応・推奨)
+  # ※ .env に GMAIL_USER と GMAIL_APP_PASSWORD を設定してください
+  gmail:
+    to_email: "Tanaka.Sota@exc.epson.co.jp"  # レポートを受信したいメールアドレス（空欄時は送信元宛て）
+
+  # Outlook設定 (Windowsデスクトップ版Outlookアプリから自動送信)
   outlook:
     to_email: "Tanaka.Sota@exc.epson.co.jp"  # あなたの社内メールアドレスを指定してください
     display_only: true                 # trueにすると送信せず、Outlookの作成画面を表示します
@@ -67,7 +105,8 @@ notification:
   # ローカルの reports/ フォルダにMarkdownファイルを保存するかどうか
   save_markdown_locally: true
 
-# 4. モデル設定
+# 5. モデル設定
 model:
-  # 利用するGeminiモデル (無料枠あり・推奨: gemini-3.5-flash)
-  name: "gemini-3.5-flash"
+  # 利用するGeminiモデル (推奨: Web検索グラウンディングに対応した gemini-2.5-flash)
+  name: "gemini-2.5-flash"
+

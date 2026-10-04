@@ -7,9 +7,9 @@ logger = logging.getLogger(__name__)
 
 # 安定して動作するフォールバックモデル一覧
 CANDIDATE_MODELS = [
-    "gemini-3.5-flash",
-    "gemini-3.1-flash-lite",
-    "gemini-flash-latest"
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash"
 ]
 
 
