@@ -28,7 +28,13 @@ def fetch_website_text(url: str, max_chars: int = 4000) -> str:
     }
     try:
         logger.info(f"自社URLをスクレイピング中: {url}")
-        resp = requests.get(url, headers=headers, timeout=10, verify=False)
+        try:
+            resp = requests.get(url, headers=headers, timeout=10, verify=True)
+        except requests.exceptions.SSLError as se:
+            logger.warning(f"自社URLのSSL証明書検証に失敗しました ({url}): {se}。安全なフォールバック (verify=False) で再試行します。")
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            resp = requests.get(url, headers=headers, timeout=10, verify=False)
+
         resp.encoding = resp.apparent_encoding
         if resp.status_code != 200:
             logger.warning(f"URLへのアクセスに失敗しました (Status: {resp.status_code}): {url}")

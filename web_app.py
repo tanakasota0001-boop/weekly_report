@@ -11,7 +11,11 @@ import logging
 import threading
 import time
 import webbrowser
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+try:
+    from http.server import ThreadingHTTPServer as ServerClass
+except ImportError:
+    from http.server import HTTPServer as ServerClass
+from http.server import SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from datetime import datetime
 
@@ -469,12 +473,13 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
 
 
 def start_server(port: int = 8000, open_browser: bool = True):
-    """Web UIサーバーを起動する"""
+    """Web UIサーバーを起動する（マルチスレッド同時リクエスト対応）"""
     server_address = ("127.0.0.1", port)
     try:
-        httpd = HTTPServer(server_address, DashboardRequestHandler)
+        httpd = ServerClass(server_address, DashboardRequestHandler)
     except OSError as e:
-        if e.errno == 48:  # Address already in use
+        # 48: macOS, 98: Linux, 10048: Windows WSAEADDRINUSE
+        if e.errno in (48, 98, 10048) or "address already in use" in str(e).lower():
             logger.warning(f"ポート {port} は既に使用されています。ポート {port + 1} で起動を試みます。")
             start_server(port + 1, open_browser)
             return
