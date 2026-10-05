@@ -1,5 +1,5 @@
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class CompanyProfileBase(BaseModel):
@@ -35,14 +35,28 @@ class ArticleEvaluation(BaseModel):
     relevance_reason: str = Field(description="自社ビジネス成長との関連性・着目すべき理由")
 
 
+class ArticleReference(BaseModel):
+    """アイデアの着想元となった個別記事の情報"""
+    title: str = Field(description="記事タイトル")
+    url: str = Field(description="記事URL")
+    source: str = Field(default="", description="情報ソース（メディア名やProduct Hunt等）")
+    summary: str = Field(default="", description="記事の要約・ポイント（100〜150文字程度）")
+    is_global: bool = Field(default=False, description="海外ソースかどうか")
+
+
 class BizDevIdea(BaseModel):
-    """深掘り分析された事業アイデア"""
-    article_title: str
-    article_url: str
-    is_global: bool = Field(default=False, description="海外先行事例かどうか")
-    source_summary: str = Field(description="記事の客観的ファクト・要約")
-    researched_facts: Optional[str] = Field(default=None, description="Web検索や本文分析から判明した市場背景やファクト・競合動向")
-    localization_opportunity: Optional[str] = Field(default=None, description="日本市場へのローカライズ機会・タイムマシン経営の視点（国内小規模店向け応用案）")
+    """深掘り分析された事業アイデア（複数記事のシナジーから創出）"""
+    idea_title: str = Field(default="", description="アイデアのタイトル・企画名")
+    
+    # 複数記事の参照情報 & シナジー背景
+    source_articles: List[ArticleReference] = Field(
+        default_factory=list,
+        description="着想元となった複数のニュース記事・先行事例"
+    )
+    synergy_rationale: str = Field(
+        default="",
+        description="これらの複数記事・動向をどう掛け合わせ、なぜ今このアイデアに至ったかのシナジー背景（点と点を繋いだ理由）"
+    )
     
     # 課題と技術
     market_pain: str = Field(description="今世の中で浮き彫りになっている未解決の課題・ペイン")
@@ -52,13 +66,51 @@ class BizDevIdea(BaseModel):
     solution_idea: str = Field(description="この課題に対し、あなたならどう解決するか（具体的なサービス・事業アイデア）")
     monetization_model: str = Field(description="お金を稼ぐためのビジネスモデル（課金形態、誰から収益を得るか）")
     kpi_impact: str = Field(description="自社の重点課題・KPIに対する具体的な貢献・インパクト")
+    localization_opportunity: Optional[str] = Field(default=None, description="日本市場へのローカライズ機会・タイムマシン経営の視点")
     internal_next_action: str = Field(description="自社のアセットを活かして参入・PoCを進めるための検証論点・打ち手")
 
     # 守り・リスク評価（客観的批判・参謀視点）
-    feasibility_rating: str = Field(description="実現性・開発難易度（例: '高 (既存技術で即PoC可能)' / '中' / '低 (要大規模開発)' とその簡潔な理由）")
+    feasibility_rating: str = Field(description="実現性・開発難易度とその簡潔な理由")
     critical_risks: str = Field(description="最大の盲点・参入障壁・大手競合による模倣リスク、やらない理由")
-    customer_readiness: str = Field(description="ターゲット顧客（小規模事業者・個人店）の受容性・導入障壁（IT苦手、忙しさ等）")
-    objective_verdict: str = Field(description="客観的参謀としての辛口ジャッジ（今すぐ着手すべきか、見送るべきか、どう限定検証すべきか）")
+    customer_readiness: str = Field(description="ターゲット顧客（小規模事業者・個人店）の受容性・導入障壁")
+    objective_verdict: str = Field(description="客観的参謀としての辛口ジャッジ")
+
+    # 後方互換用フィールド（古いレポートデータや単一記事参照用）
+    article_title: Optional[str] = Field(default="", description="主要記事タイトル（後方互換用）")
+    article_url: Optional[str] = Field(default="", description="主要記事URL（後方互換用）")
+    is_global: bool = Field(default=False, description="海外先行事例を含むかどうか（後方互換用）")
+    source_summary: Optional[str] = Field(default="", description="記事要約（後方互換用）")
+    researched_facts: Optional[str] = Field(default=None, description="Web検索や本文分析から判明した市場背景やファクト・競合動向")
+
+    @model_validator(mode="after")
+    def sync_legacy_fields(self):
+        """idea_titleとarticle_title、source_articlesと単一記事フィールドの相互補完"""
+        # idea_title と article_title の同期
+        if not self.idea_title and self.article_title:
+            self.idea_title = self.article_title
+        elif not self.article_title and self.idea_title:
+            self.article_title = self.idea_title
+
+        # source_articles がある場合、後方互換フィールドを自動設定
+        if self.source_articles:
+            if not self.article_url and self.source_articles[0].url:
+                self.article_url = self.source_articles[0].url
+            if not self.source_summary:
+                self.source_summary = " / ".join([f"{a.title}: {a.summary[:60]}" for a in self.source_articles[:3]])
+            if any(a.is_global for a in self.source_articles):
+                self.is_global = True
+        elif self.article_title and self.article_url:
+            # 逆に古い単一記事データから source_articles を逆生成
+            self.source_articles = [
+                ArticleReference(
+                    title=self.article_title,
+                    url=self.article_url,
+                    source="",
+                    summary=self.source_summary or "",
+                    is_global=self.is_global
+                )
+            ]
+        return self
 
 
 class WeeklyReport(BaseModel):

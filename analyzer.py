@@ -2,6 +2,7 @@ import json
 import logging
 from typing import List, Optional
 from datetime import datetime
+from pydantic import BaseModel, Field
 from google import genai
 from google.genai import types
 
@@ -9,6 +10,7 @@ from models import (
     CompanyProfile,
     NewsArticle,
     BizDevIdea,
+    ArticleReference,
     WeeklyReport
 )
 from gemini_helper import generate_with_fallback
@@ -17,16 +19,22 @@ from scraper import fetch_article_content
 logger = logging.getLogger(__name__)
 
 
+class MultiArticleReportResponse(BaseModel):
+    """複数記事のシナジーから創出された事業アイデア群と総括"""
+    ideas: List[BizDevIdea] = Field(description="複数記事を掛け合わせて立案された事業アイデアリスト")
+    overall_trend_comment: str = Field(description="今回分析した複数記事群とアイデアから見えるマクロな潮目・トレンド総括コメント")
+
+
 def evaluate_and_filter_articles(
     client: genai.Client,
     model_name: str,
     articles: List[NewsArticle],
     profile: CompanyProfile,
-    top_n: int = 3
+    top_n: int = 5
 ) -> List[int]:
     """
     収集したニュース記事一覧を自社プロファイルと照らし合わせ、
-    ビジネス成長の観点から最も着目すべき上位top_n件のインデックスを返す
+    複数記事の掛け合わせ（シナジー創出）に最も適した上位top_n件のインデックスを返す
     """
     if not articles:
         return []
@@ -39,9 +47,9 @@ def evaluate_and_filter_articles(
 
     system_instruction = """
 あなたはビジネス成長を牽引するチーフストラテジストです。
-多数のニュース記事（国内ニュースおよび海外先行SaaS・プロダクト）の中から、「世の中の切実な課題（ペイン）」を含み、「最新技術を絡めたビジネス創出の種」になり得る記事を厳選してください。
-海外の先行事例については、「日本の小規模事業者向けにタイムマシン的に輸入・ローカライズできるか」という視点も高く評価してください。
-単なる企業の広報リリースや一般ニュースは除外し、自社のビジネス成長にとって実利のある記事を優先してください。
+多数のニュース記事（国内ニュースおよび海外先行SaaS・プロダクト）の中から、「世の中の切実な課題（ペイン）」や「最新技術の応用」「海外先行モデル」を含み、
+【他の記事と掛け合わせることで強力な新規事業・新機軸の種になり得る記事】を厳選してください。
+単なる単発リリースではなく、複数の記事を繋ぎ合わせてシナジーを生み出せる良質な記事群を優先してください。
 """
 
     challenges_text = ""
@@ -53,7 +61,8 @@ def evaluate_and_filter_articles(
             challenges_text += "- 直近の課題:\n" + "\n".join([f"  * {issue}" for issue in issues]) + "\n"
 
     prompt = f"""
-以下の【自社プロファイル】と【ニュース記事一覧（国内＋海外先行事例）】を照合し、ビジネス成長・新機軸創出の観点から最も注目・深掘りすべき記事を上位{top_n}件選定してください。
+以下の【自社プロファイル】と【ニュース記事一覧（国内＋海外先行事例）】を照合し、
+複数記事を掛け合わせて新機軸アイデアを創出するための注目記事を上位{top_n}件選定してください。
 
 【自社プロファイル】
 - 会社・部門: {profile.name}
@@ -62,22 +71,20 @@ def evaluate_and_filter_articles(
 - 保有アセット: {', '.join(profile.key_assets)}
 - 注力テーマ: {', '.join(profile.focus_themes)}
 {challenges_text}
-【選定・スコアリング基準】
-1. 自社直近KPIとの合致度: 自社の重点KPIや直近の切実な課題の解決・突破口になり得るか（最優先）
-2. 課題の深刻度: 世の中や顧客の強いペイン・不満が潜んでいるか
-3. 新規性・技術性: AIやITの最新動向を活かせる余地があるか
-4. 自社親和性 & タイムマシン価値: 自社のアセットを活用できるか、または海外モデルを日本市場へ先回り応用できるか
+【選定基準】
+1. 自社直近KPIとの合致度: 自社の重点KPIや切実な課題の突破口になり得るか（最優先）
+2. シナジー性: 他の記事（国内課題 × 海外先行モデル × 最新AI技術など）と掛け合わせやすいか
+3. 課題の深刻度: 世の中や顧客の強いペイン・不満が潜んでいるか
+4. 海外モデルのタイムマシン価値: 日本の小規模事業者に輸入・応用できるか
 
 【ニュース記事一覧】
 {articles_text}
 
 出力は以下のJSON形式で、上位{top_n}件のインデックス番号の配列のみを出力してください:
 {{
-  "selected_indices": [0, 2, 5]
+  "selected_indices": [0, 2, 4, 7]
 }}
 """
-
-    from gemini_helper import generate_with_fallback
 
     try:
         response = generate_with_fallback(
@@ -92,7 +99,6 @@ def evaluate_and_filter_articles(
         )
         res_json = json.loads(response.text)
         indices = res_json.get("selected_indices", [])
-        # インデックスのバリデーション
         valid_indices = [i for i in indices if isinstance(i, int) and 0 <= i < len(articles)]
         return valid_indices[:top_n] if valid_indices else list(range(min(top_n, len(articles))))
     except Exception as e:
@@ -129,7 +135,6 @@ URL: {article.link}
 客観的なファクトベースで、企画立案のインプットとなる要点を200〜300文字程度で簡潔に整理してください。
 """
     try:
-        # Google Search Tool を設定
         search_config = types.GenerateContentConfig(
             tools=[{"google_search": {}}],
             temperature=0.3
@@ -145,7 +150,7 @@ URL: {article.link}
             logger.info("Web検索グラウンディングによるリサーチが完了しました。")
         return researched_text
     except Exception as e:
-        logger.warning(f"Web検索グラウンディング中にエラーが発生しました（スクレイピング結果のみで継続します）: {e}")
+        logger.warning(f"Web検索グラウンディング中にエラーが発生しました: {e}")
         return None
 
 
@@ -154,11 +159,12 @@ def generate_bizdev_analysis(
     model_name: str,
     articles: List[NewsArticle],
     profile: CompanyProfile,
-    top_n: int = 3,
+    top_n: int = 5,
     research_config: dict = None
 ) -> WeeklyReport:
     """
-    選定した記事を深掘り分析し、ビジネス創出（マネタイズ）視点の週次レポートを生成する
+    選定した複数の記事群をインプットとし、
+    「複数の記事・動向を複合的に掛け合わせた（点と点を繋ぐ）新機軸アイデア」を立案・出力する
     """
     if research_config is None:
         research_config = {}
@@ -169,41 +175,32 @@ def generate_bizdev_analysis(
 
     client = genai.Client(api_key=api_key)
 
-    logger.info("記事の一次スクリーニング中...")
+    # 複数記事の掛け合わせを行うため、最低でも4記事以上を分析対象とする
+    articles_to_select = max(top_n, 4)
+    logger.info(f"注目記事群の一次スクリーニング中 (選定目標: {articles_to_select}件)...")
     selected_indices = evaluate_and_filter_articles(
         client=client,
         model_name=model_name,
         articles=articles,
         profile=profile,
-        top_n=top_n
+        top_n=articles_to_select
     )
 
     selected_articles = [articles[i] for i in selected_indices]
-    logger.info(f"{len(selected_articles)} 件の記事を深掘り分析対象として選定しました。")
+    logger.info(f"{len(selected_articles)} 件の記事を深掘り調査・統合分析対象として選定しました。")
 
-    ideas: List[BizDevIdea] = []
-
-    system_instruction = """
-あなたは卓越したビジネス成長ストラテジストであり、同時に「冷徹な事業投資家・客観的戦略参謀（Devil's Advocate）」です。
-提供された記事の一次情報（本文テキストやWeb検索リサーチ結果）から、新規ビジネスのチャンス（攻め）を見出すだけでなく、そのアイデアに潜む致命的なリスクや参入障壁、顧客が動かない理由（守り・客観的批判）を容赦なく検証してください。
-
-単なる「面白そうなアイデア」を称賛するイエスマンではなく、
-・【攻め】誰が切実にお金を払うのか、どうマネタイズし、自社アセットで優位性を作るか
-・【守り】大手が真似したらどう防ぐか、なぜ失敗しやすいか、ターゲット（ITが苦手な小規模店など）が導入をためらう要因は何か
-・【客観判定】自社リソースで本当に即座に着手できるか、今やるべきか見送るべきか
-の双方を冷徹に分析し、実効性の高いアドバイスを提示してください。
-"""
-
-    for art in selected_articles:
-        logger.info(f"\n--- 記事分析開始: {art.title[:30]} ---")
-
-        # Step A-1: 本文スクレイピング
-        if enable_scraping:
+    # Step A: 各選定記事の本文スクレイピング & 必要に応じてGoogle Search Grounding
+    researched_articles_data = []
+    for idx, art in enumerate(selected_articles, 1):
+        logger.info(f"\n--- [記事 {idx}/{len(selected_articles)}] 本文取得 & 調査: {art.title[:30]} ---")
+        
+        # スクレイピング
+        if enable_scraping and not art.content:
             art.content = fetch_article_content(art.link, max_chars=max_article_chars)
 
-        # Step A-2: Web検索グラウンディングによる追加リサーチ
+        # Web検索グラウンディング（重要上位記事）
         researched_facts = None
-        if enable_search_grounding:
+        if enable_search_grounding and idx <= 3:
             researched_facts = research_article_with_search(
                 client=client,
                 model_name=model_name,
@@ -211,126 +208,111 @@ def generate_bizdev_analysis(
                 profile=profile
             )
 
-        # Step B: 構造化事業アイデア生成
-        logger.info(f"アイデア生成中: {art.title[:30]}...")
+        researched_articles_data.append({
+            "article": art,
+            "researched_facts": researched_facts
+        })
 
-        # プロンプト用の本文・リサーチ情報ブロック
-        if art.content:
-            article_body_text = f"【記事本文テキスト（スクレイピング結果）】\n{art.content}\n"
-        else:
-            article_body_text = f"【記事概要（RSSスニペット）】\n{art.summary}\n"
+    # Step B: 複数記事を掛け合わせた事業アイデアの統合生成
+    logger.info("\n--- 複数記事のシナジー分析 & 事業創出アイデア（攻め×守り）の生成中 ---")
 
-        research_text = (
-            f"【最新Web検索・市場リサーチ情報（Google Search Grounding）】\n{researched_facts}\n"
-            if researched_facts else ""
-        )
+    # 記事群のテキストブロックを構築
+    articles_block = ""
+    for idx, item in enumerate(researched_articles_data, 1):
+        art = item["article"]
+        rf = item["researched_facts"]
+        global_tag = "【🇺🇸 海外先行事例】" if art.is_global else "【🇯🇵 国内ニュース】"
+        body_snippet = (art.content[:500] + "...") if art.content else (art.summary[:200] + "...")
+        rf_text = f"\n  - 🔍 追加市場リサーチ: {rf}" if rf else ""
+        
+        articles_block += f"""
+[記事{idx}] {global_tag}
+・タイトル: {art.title}
+・出所: {art.source}
+・URL: {art.link}
+・本文/概要抜粋: {body_snippet}{rf_text}
+"""
 
-        challenges_context = ""
-        focus_kpi_text = ""
-        if profile.current_challenges:
-            focus_kpi_text = profile.current_challenges.get("focus_kpi", "")
-            issues = profile.current_challenges.get("urgent_issues", [])
-            challenges_context = f"\n【自社の直近の注力課題 & 重点KPI】\n- 最重要KPI: {focus_kpi_text}\n"
-            if issues:
-                challenges_context += "- 解決したい切実な課題:\n" + "\n".join([f"  * {issue}" for issue in issues]) + "\n"
+    challenges_context = ""
+    focus_kpi_text = ""
+    if profile.current_challenges:
+        focus_kpi_text = profile.current_challenges.get("focus_kpi", "")
+        issues = profile.current_challenges.get("urgent_issues", [])
+        challenges_context = f"\n【自社の直近の注力課題 & 重点KPI】\n- 最重要KPI: {focus_kpi_text}\n"
+        if issues:
+            challenges_context += "- 解決したい切実な課題:\n" + "\n".join([f"  * {issue}" for issue in issues]) + "\n"
 
-        global_context = ""
-        if art.is_global:
-            global_context = (
-                "【★海外先行事例（Product Hunt / 米国Tech動向）としての分析指示】\n"
-                "- 本記事は英語・海外の最新先行プロダクト/動向です。\n"
-                "- source_summary は英語の事実をわかりやすい日本語で要約してください。\n"
-                "- タイムマシン経営の視点から、この海外モデルを「ITが苦手な日本の個人店・小規模事業者向けにどうローカライズ・代行導入して先回りするか」を localization_opportunity に具体的に記述してください。\n\n"
-            )
+    system_instruction = """
+あなたは卓越したチーフビジネスストラテジストであり、同時に「冷徹な事業投資家・客観的戦略参謀（Devil's Advocate）」です。
+あなたの最大の役割は、【複数のニュース記事や海外先行事例、最新技術トレンドを掛け合わせ（Cross-Pollination / 点と点を繋ぐ）】、
+単一の記事だけでは見えてこない、自社独自の強力な新規事業・新機能アイデアを立案することです。
 
-        prompt = f"""
-以下の記事情報および市場リサーチ結果をもとに、新規ビジネス創出・マネタイズ企画を立案し、同時に客観的リスク・参入障壁を批判的に検証してください。
+【重要指示：複数記事の掛け合わせ】
+- 1つの記事だけを見てアイデアを作るのではなく、必ず【提示された記事群の中から2つ以上の異なる記事】を着想元として組み合わせてください。
+  例: 「国内個人店の切実な人手不足・口コミ課題（記事A）」×「海外先行のマルチチャネル自動AIエージェント（記事B）」×「最新の生成AI広告/画像連携技術（記事C）」
+- 各アイデアについて、なぜそれらの複数記事を組み合わせたのか（synergy_rationale）を明確に解説してください。
+- 「攻め（マネタイズ、解決策、KPIインパクト）」だけでなく、「守り（実現性、最大の盲点・参入障壁、顧客受容性、参謀の辛口ジャッジ）」の両輪を容赦なく冷徹に評価してください。
+"""
 
-【対象記事】
-タイトル: {art.title}
-出所: {art.source} {'(🇺🇸海外先行事例)' if art.is_global else '(🇯🇵国内ニュース)'}
-URL: {art.link}
-{article_body_text}
-{research_text}
-{global_context}【自社コンテキスト（自社の強みを活かす視点）】
+    prompt = f"""
+以下の【選定された複数の注目記事一覧】および【自社プロファイル】をもとに、
+記事同士のシナジー（点と点を繋ぐ掛け合わせ）から生まれる骨太な新規事業・マネタイズ企画を【2〜3件】立案し、
+同時に客観的リスク・参入障壁を批判的に検証してください。
+
+【収集・選定された注目記事一覧】
+{articles_block}
+
+【自社コンテキスト（自社の強みを活かす視点）】
 - 会社・部門: {profile.name}
 - 主要事業: {profile.core_business}
 - ターゲット: {profile.target_customers}
 - 保有アセット: {', '.join(profile.key_assets)}
 - 注力テーマ: {', '.join(profile.focus_themes)}
 {challenges_context}
-以下の項目を検討し、JSONで出力してください:
-1. source_summary: 記事が伝えている客観的事実・要約（海外記事の場合は日本語で平易に150文字程度）
-2. researched_facts: Web検索や記事詳細から判明した市場背景やファクト・競合動向（150〜200文字程度）
-3. market_pain: 今世の中で浮き彫りになっている未解決の課題・顧客のペイン（誰が何に困っているか）
-4. latest_tech: 活用されている、または活用できる最新技術・アプローチ
+【各アイデアの必須要件】
+1. idea_title: 魅力的で具体的なアイデア企画名（例: 『〇〇×〇〇：店舗向け次世代AI〜』）
+2. source_articles: 着想元となった【2つ以上の記事】のリスト（記事タイトル、URL、出所、要約、is_global）
+3. synergy_rationale: なぜこの記事群を掛け合わせたのか、組み合わせることでどんな新しい価値や突破口が生まれるのか（150〜200文字程度）
+4. market_pain: 複数記事から浮き彫りになる世の中の切実な課題・顧客のペイン
+5. latest_tech: 活用されている、または組み合わせる最新技術・アプローチ
+6. solution_idea: 「あなたならどう解決・事業化するか」具体的なサービス・ソリューション企画
+7. monetization_model: 「どうやってお金を稼ぐか」マネタイズモデル（課金形態：月額SaaS、アップセル、代行手数料など）
+8. kpi_impact: 自社の重点KPI（{focus_kpi_text or '顧客LTV・解約率・新規獲得'}）や課題に対してどう具体的に貢献するか
+9. localization_opportunity: 海外事例を含む場合、日本国内の店舗・小規模事業者へのローカライズ機会や先行輸入・代行の可能性（国内記事のみの場合は null）
+10. internal_next_action: 自社のアセットを活かして参入・PoCを進めるための最初のアクション仮説
+11. feasibility_rating: 自社リソースでの実現性・難易度評価（「高」/「中」/「低」とその簡潔な理由）
+12. critical_risks: 最大の盲点・参入障壁・大手競合の模倣リスク、やらない理由
+13. customer_readiness: ターゲット顧客（個人店・小規模事業者など）の受容性・導入障壁
+14. objective_verdict: 客観的参謀としての辛口ジャッジ（「即座に着手」「限定検証」「見送り」とその率直な根拠）
 
-【攻めの事業企画】
-5. solution_idea: 「あなたならどう解決・事業化するか」具体的なサービス・ソリューション企画（具体的に誰に何を提供するか）
-6. monetization_model: 「どうやってお金を稼ぐか」マネタイズモデル（課金形態：月額SaaS、成果報酬、導入支援＋保守、手数料率など具体的に）
-7. kpi_impact: 自社の重点KPI（{focus_kpi_text or '顧客LTV・解約率・売上'}）や直近課題に対して、このアイデアがどう具体的に寄与・貢献するか（定量的または定性的なインパクト）
-8. localization_opportunity: （海外事例の場合は必須）日本国内の店舗・小規模事業者へのローカライズ機会や先行輸入・代行の可能性、参入障壁への対策（国内記事の場合は null）
-9. internal_next_action: 自社のアセットを活用して参入・PoCを進めるための検証論点・最初のアクション仮説
-
-【守り・リスク評価（客観的批判・参謀視点）】
-10. feasibility_rating: 自社リソースでの実現性・難易度評価（「高 (既存技術で1〜2ヶ月でPoC可能)」 / 「中 (一部外部連携や開発が必要)」 / 「低 (大規模開発や専門リソースが必要)」とその簡潔な理由）
-11. critical_risks: 最大の盲点・参入障壁・大手競合（BASE, ペライチ, Shopify, リクルート等）の模倣リスク、やらない理由
-12. customer_readiness: ターゲット顧客（個人店・小規模事業者など）の受容性・導入障壁（忙しさ、ITリテラシー、費用対効果への疑念など）
-13. objective_verdict: 客観的参謀としての辛口ジャッジ（「今すぐ着手すべき」「条件付きで限定検証」「現時点では見送るべき」とその率直な根拠）
+最後に overall_trend_comment に、今回分析した複数記事群から見える今週のAI・IT業界のマクロな潮目と総括コメント（200〜300文字）を記載してください。
 """
 
-        try:
-            response = generate_with_fallback(
-                client=client,
-                preferred_model=model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_instruction,
-                    response_mime_type="application/json",
-                    response_schema=BizDevIdea,
-                    temperature=0.4
-                )
-            )
-            idea_data = json.loads(response.text)
-            
-            # researched_factsが空で、事前リサーチが存在する場合は補完
-            if not idea_data.get("researched_facts") and researched_facts:
-                idea_data["researched_facts"] = researched_facts
-
-            idea = BizDevIdea(
-                article_title=art.title,
-                article_url=art.link,
-                is_global=art.is_global,
-                **{k: v for k, v in idea_data.items() if k not in ["article_title", "article_url", "is_global"]}
-            )
-            ideas.append(idea)
-        except Exception as e:
-            logger.error(f"アイデアの生成に失敗しました ({art.title}): {e}")
-
-    # 全体総括の生成
-    overall_prompt = f"""
-今回分析した以下の{len(ideas)}件のアイデアから、今週のAI・IT業界におけるマクロな潮目・トレンドと、
-今後のビジネス展開において意識すべき総括コメント（200〜300文字程度）を作成してください。
-
-取り上げた記事:
-{chr(10).join(['- ' + i.article_title for i in ideas])}
-"""
     try:
-        trend_response = generate_with_fallback(
+        response = generate_with_fallback(
             client=client,
             preferred_model=model_name,
-            contents=overall_prompt,
+            contents=prompt,
             config=types.GenerateContentConfig(
-                temperature=0.3
+                system_instruction=system_instruction,
+                response_mime_type="application/json",
+                response_schema=MultiArticleReportResponse,
+                temperature=0.4
             )
         )
-        overall_comment = trend_response.text.strip()
+        res_data = json.loads(response.text)
+        report_data = MultiArticleReportResponse(**res_data)
+        ideas = report_data.ideas
+        overall_comment = report_data.overall_trend_comment
+        logger.info(f"複数記事を掛け合わせた事業アイデア {len(ideas)} 件の生成に成功しました！")
     except Exception as e:
-        logger.warning(f"総括コメントの生成に失敗しました: {e}")
+        logger.error(f"統合アイデアの生成に失敗しました: {e}。フォールバック処理を実行します。")
+        ideas = []
         overall_comment = "今週のIT・AI動向を踏まえ、新規ビジネス創出の種となる課題と技術をピックアップしました。"
 
     now_str = datetime.now().strftime("%Y年%m月%d日")
     focus_kpi = profile.current_challenges.get("focus_kpi") if profile.current_challenges else None
+
     report = WeeklyReport(
         report_title=f"【週次ビジネス成長レポート】最新AI・IT動向から紐解く新機軸アイデア ({now_str})",
         generated_at=now_str,
@@ -343,5 +325,5 @@ URL: {art.link}
     return report
 
 
-# エイリアス（自然な呼称として提供）
+# エイリアス
 generate_growth_analysis = generate_bizdev_analysis

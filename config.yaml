@@ -55,7 +55,7 @@ news:
     - SMB SaaS AI automation
     - local business AI tools
     - AI website builder
-  top_articles_to_report: 3
+  top_articles_to_report: 5
 research:
   enable_scraping: true
   max_article_chars: 3500

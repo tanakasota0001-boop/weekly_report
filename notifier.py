@@ -26,13 +26,33 @@ def format_report_to_markdown(report: Any) -> str:
     md += "---\n\n"
 
     for idx, idea in enumerate(report.ideas, 1):
-        global_badge = " [🇺🇸 海外先行事例]" if idea.is_global else ""
-        md += f"## 🚀 アイデア {idx}: {idea.article_title}{global_badge}\n"
-        md += f"- **元記事リンク:** [{idea.article_title}]({idea.article_url})\n"
-        md += f"- **記事の要約:** {idea.source_summary}\n\n"
-        if idea.researched_facts:
+        idea_title = getattr(idea, "idea_title", None) or idea.article_title or f"事業アイデア {idx}"
+        global_badge = " [🇺🇸 海外先行事例]" if getattr(idea, "is_global", False) else ""
+        md += f"## 🚀 アイデア {idx}: {idea_title}{global_badge}\n\n"
+
+        # 複数記事の参照情報
+        source_arts = getattr(idea, "source_articles", [])
+        if source_arts:
+            md += "### 📰 着想元となった複数記事 & 先行事例\n"
+            for a in source_arts:
+                g_tag = "[🇺🇸 海外]" if getattr(a, "is_global", False) else "[🇯🇵 国内]"
+                src_info = f" (出所: {a.source})" if getattr(a, "source", "") else ""
+                md += f"- **{g_tag} [{a.title}]({a.url})**{src_info}\n"
+                if getattr(a, "summary", ""):
+                    md += f"  > 要約: {a.summary}\n"
+            md += "\n"
+        else:
+            md += f"- **元記事リンク:** [{idea.article_title}]({idea.article_url})\n"
+            md += f"- **記事の要約:** {idea.source_summary}\n\n"
+
+        # シナジー背景
+        synergy = getattr(idea, "synergy_rationale", "")
+        if synergy:
+            md += f"### 🔗 複数記事の掛け合わせ・シナジー背景 (Connecting the Dots)\n> {synergy}\n\n"
+
+        if getattr(idea, "researched_facts", None):
             md += f"- **🔍 市場背景・競合動向 (Webリサーチ):**\n  > {idea.researched_facts}\n\n"
-        if idea.localization_opportunity:
+        if getattr(idea, "localization_opportunity", None):
             md += f"- **🌐 日本市場へのローカライズ機会 (タイムマシン経営):**\n  > {idea.localization_opportunity}\n\n"
         
         md += "### 💡 攻めの事業企画 (Solution & Monetization)\n"
@@ -58,10 +78,55 @@ def format_report_to_html(report: WeeklyReport) -> str:
     """Outlookメール用のリッチで美しいHTMLメール本文を生成する"""
     ideas_html = ""
     for idx, idea in enumerate(report.ideas, 1):
-        global_badge = '<span style="background-color: #5c2d91; color: #ffffff; font-size: 11px; font-weight: normal; padding: 2px 8px; border-radius: 10px; margin-left: 8px; vertical-align: middle;">🇺🇸 海外先行事例</span>' if idea.is_global else ''
+        idea_title = getattr(idea, "idea_title", None) or idea.article_title or f"事業アイデア {idx}"
+        is_global = getattr(idea, "is_global", False)
+        global_badge = '<span style="background-color: #5c2d91; color: #ffffff; font-size: 11px; font-weight: normal; padding: 2px 8px; border-radius: 10px; margin-left: 8px; vertical-align: middle;">🇺🇸 海外先行事例</span>' if is_global else ''
+
+        # 複数記事の参照リスト
+        source_arts = getattr(idea, "source_articles", [])
+        if source_arts:
+            articles_html_list = ""
+            for a in source_arts:
+                a_global = '<span style="background-color: #5c2d91; color: #ffffff; font-size: 10px; padding: 1px 6px; border-radius: 4px; margin-right: 4px;">🇺🇸海外</span>' if getattr(a, "is_global", False) else '<span style="background-color: #0078d4; color: #ffffff; font-size: 10px; padding: 1px 6px; border-radius: 4px; margin-right: 4px;">🇯🇵国内</span>'
+                src_txt = f" ({a.source})" if getattr(a, "source", "") else ""
+                sum_txt = f"<div style='font-size: 12px; color: #605e5c; margin-top: 2px;'>{a.summary}</div>" if getattr(a, "summary", "") else ""
+                articles_html_list += f"""
+                <li style="margin-bottom: 8px; font-size: 13px;">
+                    {a_global} <strong><a href="{a.url}" target="_blank" style="color: #0078d4; text-decoration: none;">{a.title}</a></strong>{src_txt}
+                    {sum_txt}
+                </li>
+                """
+            sources_box = f"""
+            <div style="background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 12px 16px; margin-bottom: 14px;">
+                <div style="font-weight: bold; font-size: 13px; color: #495057; margin-bottom: 6px;">📰 着想元となった複数記事・動向:</div>
+                <ul style="margin: 0; padding-left: 18px; color: #323130;">
+                    {articles_html_list}
+                </ul>
+            </div>
+            """
+        else:
+            sources_box = f"""
+            <p style="font-size: 13px; color: #605e5c; margin-bottom: 12px;">
+                <strong>📰 元記事:</strong> <a href="{idea.article_url}" target="_blank" style="color: #0078d4; text-decoration: none;">{idea.article_title} ↗</a>
+            </p>
+            <div style="background-color: #f3f2f1; padding: 10px 14px; border-radius: 4px; margin-bottom: 12px; font-size: 14px; line-height: 1.5;">
+                <strong>記事のファクト要約:</strong> {idea.source_summary}
+            </div>
+            """
+
+        # シナジー背景
+        synergy_box = ""
+        synergy = getattr(idea, "synergy_rationale", "")
+        if synergy:
+            synergy_box = f"""
+            <div style="background: linear-gradient(135deg, #f3e8ff, #ede9fe); border-left: 4px solid #7c3aed; padding: 12px 16px; border-radius: 0 6px 6px 0; margin-bottom: 14px; font-size: 13px; line-height: 1.6; color: #5b21b6;">
+                <strong>🔗 複数記事の掛け合わせ背景 (Connecting the Dots):</strong><br>
+                <span style="color: #1e1b4b;">{synergy}</span>
+            </div>
+            """
 
         researched_box = ""
-        if idea.researched_facts:
+        if getattr(idea, "researched_facts", None):
             researched_box = f"""
             <div style="background-color: #f0f7ff; border-left: 4px solid #0078d4; padding: 10px 14px; border-radius: 0 4px 4px 0; margin-bottom: 12px; font-size: 13px; line-height: 1.5; color: #106ebe;">
                 <strong>🔍 市場背景・競合リサーチ (Web検索):</strong><br>
@@ -70,7 +135,7 @@ def format_report_to_html(report: WeeklyReport) -> str:
             """
 
         localization_box = ""
-        if idea.localization_opportunity:
+        if getattr(idea, "localization_opportunity", None):
             localization_box = f"""
             <div style="background-color: #f5f0fb; border-left: 4px solid #5c2d91; padding: 10px 14px; border-radius: 0 4px 4px 0; margin-bottom: 12px; font-size: 13px; line-height: 1.5; color: #5c2d91;">
                 <strong>🌐 日本市場へのローカライズ機会 (タイムマシン経営):</strong><br>
@@ -81,14 +146,10 @@ def format_report_to_html(report: WeeklyReport) -> str:
         ideas_html += f"""
         <div style="margin-bottom: 30px; padding: 22px; background-color: #ffffff; border: 1px solid #e1dfdd; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.06);">
             <h3 style="margin-top: 0; color: #0078d4; font-size: 18px; border-bottom: 2px solid #0078d4; padding-bottom: 8px;">
-                🚀 アイデア {idx}: {idea.article_title} {global_badge}
+                🚀 アイデア {idx}: {idea_title} {global_badge}
             </h3>
-            <p style="font-size: 13px; color: #605e5c; margin-bottom: 12px;">
-                <strong>📰 元記事:</strong> <a href="{idea.article_url}" target="_blank" style="color: #0078d4; text-decoration: none;">元記事を読む ↗</a>
-            </p>
-            <div style="background-color: #f3f2f1; padding: 10px 14px; border-radius: 4px; margin-bottom: 12px; font-size: 14px; line-height: 1.5;">
-                <strong>記事のファクト要約:</strong> {idea.source_summary}
-            </div>
+            {sources_box}
+            {synergy_box}
             {researched_box}
             {localization_box}
 
@@ -452,7 +513,54 @@ def build_adaptive_card(report: WeeklyReport) -> dict:
     ]
 
     for idx, idea in enumerate(report.ideas, 1):
-        global_tag = "[🇺🇸海外] " if idea.is_global else ""
+        idea_title = getattr(idea, "idea_title", None) or idea.article_title or f"事業アイデア {idx}"
+        is_global = getattr(idea, "is_global", False)
+        global_tag = "[🇺🇸海外] " if is_global else ""
+        source_arts = getattr(idea, "source_articles", [])
+        synergy = getattr(idea, "synergy_rationale", "")
+
+        facts = []
+        if source_arts:
+            src_titles = " / ".join([a.title[:30] + "..." for a in source_arts[:3]])
+            facts.append({"title": "📰着想元記事", "value": src_titles})
+        else:
+            facts.append({"title": "記事要約", "value": idea.source_summary or ""})
+
+        if synergy:
+            facts.append({"title": "🔗シナジー背景", "value": synergy})
+        if getattr(idea, "researched_facts", None):
+            facts.append({"title": "市場/競合リサーチ", "value": idea.researched_facts})
+        if getattr(idea, "localization_opportunity", None):
+            facts.append({"title": "🌐ローカライズ", "value": idea.localization_opportunity})
+
+        facts.extend([
+            {"title": "課題(Pain)", "value": idea.market_pain},
+            {"title": "最新技術", "value": idea.latest_tech},
+            {"title": "事業アイデア", "value": idea.solution_idea},
+            {"title": "マネタイズ", "value": idea.monetization_model},
+            {"title": "🎯KPI貢献", "value": idea.kpi_impact},
+            {"title": "自社の打ち手", "value": idea.internal_next_action},
+            {"title": "⚡実現性/難易度", "value": idea.feasibility_rating},
+            {"title": "⚠️最大リスク/障壁", "value": idea.critical_risks},
+            {"title": "👥顧客受容性", "value": idea.customer_readiness},
+            {"title": "⚖️参謀判定", "value": idea.objective_verdict}
+        ])
+
+        actions = []
+        if source_arts:
+            for a_idx, a in enumerate(source_arts[:2], 1):
+                actions.append({
+                    "type": "Action.OpenUrl",
+                    "title": f"記事{a_idx}: {a.title[:15]}... ↗",
+                    "url": a.url
+                })
+        elif idea.article_url:
+            actions.append({
+                "type": "Action.OpenUrl",
+                "title": "元記事を読む ↗",
+                "url": idea.article_url
+            })
+
         idea_card = {
             "type": "Container",
             "separator": True,
@@ -462,39 +570,14 @@ def build_adaptive_card(report: WeeklyReport) -> dict:
                     "size": "Medium",
                     "weight": "Bolder",
                     "color": "Accent",
-                    "text": f"🚀 アイデア {idx}: {global_tag}{idea.article_title}",
+                    "text": f"🚀 アイデア {idx}: {global_tag}{idea_title}",
                     "wrap": True
                 },
                 {
                     "type": "FactSet",
-                    "facts": [
-                        {"title": "記事要約", "value": idea.source_summary},
-                    ] + ([{"title": "市場/競合リサーチ", "value": idea.researched_facts}] if idea.researched_facts else []) + (
-                        [{"title": "🌐ローカライズ", "value": idea.localization_opportunity}] if idea.localization_opportunity else []
-                    ) + [
-                        {"title": "課題(Pain)", "value": idea.market_pain},
-                        {"title": "最新技術", "value": idea.latest_tech},
-                        {"title": "事業アイデア", "value": idea.solution_idea},
-                        {"title": "マネタイズ", "value": idea.monetization_model},
-                        {"title": "🎯KPI貢献", "value": idea.kpi_impact},
-                        {"title": "自社の打ち手", "value": idea.internal_next_action},
-                        {"title": "⚡実現性/難易度", "value": idea.feasibility_rating},
-                        {"title": "⚠️最大リスク/障壁", "value": idea.critical_risks},
-                        {"title": "👥顧客受容性", "value": idea.customer_readiness},
-                        {"title": "⚖️参謀判定", "value": idea.objective_verdict}
-                    ]
-                },
-                {
-                    "type": "ActionSet",
-                    "actions": [
-                        {
-                            "type": "Action.OpenUrl",
-                            "title": "元記事を読む ↗",
-                            "url": idea.article_url
-                        }
-                    ]
+                    "facts": facts
                 }
-            ]
+            ] + ([{"type": "ActionSet", "actions": actions}] if actions else [])
         }
         body_elements.append(idea_card)
 
