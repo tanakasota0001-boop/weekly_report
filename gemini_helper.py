@@ -8,8 +8,8 @@ logger = logging.getLogger(__name__)
 # 安定して動作する現行の最新フォールバックモデル一覧
 CANDIDATE_MODELS = [
     "gemini-3.8-flash",
+    "gemini-3.5-flash-lite",
     "gemini-3.5-flash",
-    "gemini-flash-latest",
     "gemini-3.1-flash-lite"
 ]
 
@@ -19,7 +19,7 @@ def generate_with_fallback(
     preferred_model: str,
     contents: str,
     config: types.GenerateContentConfig,
-    max_retries_per_model: int = 2
+    max_retries_per_model: int = 1
 ):
     """
     一時的な503混雑エラー、429レート制限、またはモデル非推奨・404に対応するため、

@@ -11,6 +11,14 @@ import logging
 import threading
 import time
 import webbrowser
+
+# Windows環境でのUnicodeEncodeError対策
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 try:
     from http.server import ThreadingHTTPServer as ServerClass
 except ImportError:
@@ -39,6 +47,7 @@ try:
 except ImportError:
     yaml = None
 
+import profile_manager
 from notifier import (
     save_markdown_report,
     load_report_data,
@@ -169,10 +178,11 @@ task_manager = TaskManager()
 
 
 def run_generation_task(options: dict):
-    """別スレッドでレポート生成パイプラインを実行する"""
+    """別スレッドでレポート生成パイプラインを実行する（指定プロファイル対応）"""
     dry_run = options.get("dry_run", False)
     refresh_profile = options.get("refresh_profile", False)
     override_kpi = options.get("override_kpi", "").strip()
+    target_profile_id = options.get("profile_id", "").strip() or profile_manager.get_active_profile_id()
 
     load_dotenv(override=True)
     api_key = os.getenv("GEMINI_API_KEY", "")
@@ -185,7 +195,7 @@ def run_generation_task(options: dict):
         task_manager.start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         task_manager.progress = 5
 
-    task_manager.add_log("レポート生成タスクを開始しました。", "INFO")
+    task_manager.add_log(f"レポート生成タスクを開始しました (対象プロファイル: {target_profile_id})。", "INFO")
 
     try:
         if not api_key or api_key == "your_gemini_api_key_here":
@@ -213,6 +223,22 @@ def run_generation_task(options: dict):
         research_cfg = config.get("research", {})
         notif_cfg = config.get("notification", {})
 
+        # プロファイルデータのロード
+        prof_data = profile_manager.get_profile(target_profile_id)
+        if prof_data:
+            comp_cfg = {
+                "name": prof_data.get("name", comp_cfg.get("name")),
+                "url": prof_data.get("url", comp_cfg.get("url")),
+                "notes": prof_data.get("notes", comp_cfg.get("notes")),
+                "current_challenges": prof_data.get("current_challenges", comp_cfg.get("current_challenges")),
+                "resource_constraints": prof_data.get("resource_constraints", comp_cfg.get("resource_constraints")),
+            }
+            if prof_data.get("keywords"):
+                news_cfg["keywords"] = prof_data["keywords"]
+            task_manager.add_log(f"プロファイル情報読込: 『{prof_data.get('name')}』", "INFO")
+        else:
+            task_manager.add_log(f"プロファイル '{target_profile_id}' が見つからないため config.yaml 設定を使用します。", "WARNING")
+
         current_challenges = comp_cfg.get("current_challenges", {})
         if override_kpi:
             current_challenges["focus_kpi"] = override_kpi
@@ -227,25 +253,37 @@ def run_generation_task(options: dict):
             url=comp_cfg.get("url", ""),
             notes=comp_cfg.get("notes", ""),
             force_refresh=refresh_profile,
-            current_challenges=current_challenges
+            current_challenges=current_challenges,
+            resource_constraints=comp_cfg.get("resource_constraints"),
+            profile_id=target_profile_id
         )
-        task_manager.add_log(f"プロファイル確認完了: {profile.name} (注力: {', '.join(profile.focus_themes[:2])})", "INFO")
+        rc_info = ""
+        if profile.resource_constraints:
+            rc = profile.resource_constraints
+            rc_info = f" [リソース: {rc.get('weekly_hours', '')}/{rc.get('budget', '')}/{rc.get('technical_skill', '')}]"
+        task_manager.add_log(f"プロファイル確認完了: {profile.name}{rc_info}", "INFO")
 
-        # Step 2: ニュース収集
-        task_manager.set_step(2, "国内・海外ニュース収集", 35)
+        # Step 2: ニュース収集 & 課題逆引きリサーチ
+        task_manager.set_step(2, "自社課題逆引きリサーチ ＆ 国内・海外動向収集", 35)
         keywords = news_cfg.get("keywords", ["生成AI ビジネス", "DX 新規事業"])
         max_collect = news_cfg.get("max_articles_to_collect", 20)
         global_cfg = news_cfg.get("global_sources", {})
 
-        task_manager.add_log(f"ニュース収集を開始します (キーワード数: {len(keywords)}件, 海外ソース: {'有効' if global_cfg.get('enabled') else '無効'})", "INFO")
+        kpi_label = current_challenges.get("focus_kpi", "未設定")
+        task_manager.add_log(f"自社の切実な課題（KPI: {kpi_label}）を起点に、最新技術・代替手法の逆引きリサーチ（Pull型）を開始します...", "INFO")
         articles = collect_news(
             keywords=keywords,
             max_total_articles=max_collect,
-            global_config=global_cfg
+            global_config=global_cfg,
+            profile=profile,
+            api_key=api_key,
+            model_name=model_name
         )
         if not articles:
             raise ValueError("収集できたニュース記事が0件でした。キーワード設定を見直してください。")
-        task_manager.add_log(f"合計 {len(articles)} 件のニュース・先行事例を収集しました。", "INFO")
+        
+        issue_cnt = sum(1 for a in articles if getattr(a, "is_issue_driven", False))
+        task_manager.add_log(f"合計 {len(articles)} 件を収集完了 (🎯自社課題逆引き: {issue_cnt}件, 国内外動向: {len(articles) - issue_cnt}件)", "INFO")
 
         # Step 3: 分析 & アイデア生成
         task_manager.set_step(3, "本文スクレイピング・Web検索グラウンディング・戦略立案", 60)
@@ -345,6 +383,8 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
             latest_id = reports[0]["id"] if reports else None
 
             config = load_config_dict()
+            active_id = profile_manager.get_active_profile_id()
+            active_prof = profile_manager.get_profile(active_id) or {}
 
             data = {
                 "gemini_api_key_configured": bool(api_key and api_key != "your_gemini_api_key_here"),
@@ -353,9 +393,25 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
                 "to_email": config.get("notification", {}).get("gmail", {}).get("to_email", ""),
                 "reports_count": len(reports),
                 "latest_report_id": latest_id,
-                "current_kpi": config.get("company", {}).get("current_challenges", {}).get("focus_kpi", "")
+                "current_kpi": active_prof.get("current_challenges", {}).get("focus_kpi") or config.get("company", {}).get("current_challenges", {}).get("focus_kpi", ""),
+                "active_profile_id": active_id,
+                "active_profile_name": active_prof.get("name", "自社")
             }
             return self._send_json(data)
+
+        # API: プロファイル一覧
+        elif path == "/api/profiles":
+            profiles = profile_manager.list_profiles()
+            active_id = profile_manager.get_active_profile_id()
+            return self._send_json({"profiles": profiles, "active_profile_id": active_id})
+
+        # API: 特定プロファイル詳細
+        elif path.startswith("/api/profiles/"):
+            pid = path.replace("/api/profiles/", "").strip()
+            prof = profile_manager.get_profile(pid)
+            if prof:
+                return self._send_json(prof)
+            return self._send_json({"error": "Profile not found"}, 404)
 
         # API: 設定取得
         elif path == "/api/config":
@@ -393,8 +449,39 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
 
+        # API: プロファイルの保存（新規作成 / 更新）
+        if path == "/api/profiles":
+            try:
+                data = self._read_json_body()
+                saved = profile_manager.save_profile(data)
+                return self._send_json({"success": True, "message": "プロファイルを保存しました。", "profile": saved})
+            except Exception as e:
+                return self._send_json({"success": False, "error": str(e)}, 500)
+
+        # API: プロファイルのアクティブ化
+        elif path.startswith("/api/profiles/") and path.endswith("/activate"):
+            parts = path.strip("/").split("/")
+            if len(parts) == 4 and parts[0] == "api" and parts[1] == "profiles" and parts[3] == "activate":
+                pid = parts[2]
+                ok = profile_manager.set_active_profile_id(pid)
+                if ok:
+                    return self._send_json({"success": True, "message": f"プロファイル '{pid}' をアクティブにしました。"})
+                return self._send_json({"error": "Profile not found"}, 404)
+
+        # API: プロファイルの複製
+        elif path.startswith("/api/profiles/") and path.endswith("/duplicate"):
+            parts = path.strip("/").split("/")
+            if len(parts) == 4 and parts[0] == "api" and parts[1] == "profiles" and parts[3] == "duplicate":
+                pid = parts[2]
+                body = self._read_json_body()
+                new_name = body.get("name")
+                dup = profile_manager.duplicate_profile(pid, new_name)
+                if dup:
+                    return self._send_json({"success": True, "profile": dup})
+                return self._send_json({"error": "Profile not found"}, 404)
+
         # API: 設定更新
-        if path == "/api/config":
+        elif path == "/api/config":
             try:
                 data = self._read_json_body()
                 save_config_dict(data)
@@ -412,6 +499,112 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
             thread = threading.Thread(target=run_generation_task, args=(body,), daemon=True)
             thread.start()
             return self._send_json({"success": True, "message": "生成タスクを開始しました。"})
+
+        # API: 参謀と壁打ちする (Strategic Advisory Chat)
+        elif path == "/api/consult":
+            try:
+                body = self._read_json_body()
+                idea = body.get("idea", {})
+                profile_id = body.get("profile_id", "").strip()
+                question = body.get("question", "").strip()
+                chat_history = body.get("chat_history", [])
+
+                if not question:
+                    return self._send_json({"error": "質問内容（question）を入力してください。"}, 400)
+
+                load_dotenv(override=True)
+                api_key = os.getenv("GEMINI_API_KEY", "")
+                if not api_key or api_key == "your_gemini_api_key_here":
+                    return self._send_json({"error": "GEMINI_API_KEY が設定されていません。"}, 400)
+
+                # 対象プロファイルの取得
+                prof = profile_manager.get_profile(profile_id) if profile_id else None
+                if not prof:
+                    act_id = profile_manager.get_active_profile_id()
+                    prof = profile_manager.get_profile(act_id) or {}
+
+                config = load_config_dict()
+                model_name = config.get("model", {}).get("name", "gemini-3.8-flash")
+
+                from analyzer import consult_idea_with_advisor
+                answer = consult_idea_with_advisor(
+                    api_key=api_key,
+                    model_name=model_name,
+                    idea=idea,
+                    profile=prof,
+                    question=question,
+                    chat_history=chat_history
+                )
+                return self._send_json({"success": True, "answer": answer})
+            except Exception as e:
+                logger.exception("壁打ちAPI実行時エラー")
+                return self._send_json({"success": False, "error": str(e)}, 500)
+
+        # API: 戦略問診ウィザード - 動的質問生成
+        elif path == "/api/wizard/questions":
+            try:
+                body = self._read_json_body()
+                name = body.get("name", "").strip()
+                url = body.get("url", "").strip()
+                notes = body.get("notes", "").strip()
+
+                if not name:
+                    return self._send_json({"error": "会社名または事業名（name）を入力してください。"}, 400)
+
+                load_dotenv(override=True)
+                api_key = os.getenv("GEMINI_API_KEY", "")
+                if not api_key or api_key == "your_gemini_api_key_here":
+                    return self._send_json({"error": "GEMINI_API_KEY が設定されていません。"}, 400)
+
+                config = load_config_dict()
+                model_name = config.get("model", {}).get("name", "gemini-3.8-flash")
+
+                from profiler import generate_wizard_questions
+                data = generate_wizard_questions(
+                    api_key=api_key,
+                    model_name=model_name,
+                    name=name,
+                    url=url,
+                    notes=notes
+                )
+                return self._send_json({"success": True, "data": data})
+            except Exception as e:
+                logger.exception("問診質問生成エラー")
+                return self._send_json({"success": False, "error": str(e)}, 500)
+
+        # API: 戦略問診ウィザード - プロファイル合成
+        elif path == "/api/wizard/synthesize":
+            try:
+                body = self._read_json_body()
+                name = body.get("name", "").strip()
+                url = body.get("url", "").strip()
+                notes = body.get("notes", "").strip()
+                answers = body.get("answers", [])
+
+                if not name:
+                    return self._send_json({"error": "会社名または事業名（name）を入力してください。"}, 400)
+
+                load_dotenv(override=True)
+                api_key = os.getenv("GEMINI_API_KEY", "")
+                if not api_key or api_key == "your_gemini_api_key_here":
+                    return self._send_json({"error": "GEMINI_API_KEY が設定されていません。"}, 400)
+
+                config = load_config_dict()
+                model_name = config.get("model", {}).get("name", "gemini-3.8-flash")
+
+                from profiler import synthesize_wizard_profile
+                synthesized = synthesize_wizard_profile(
+                    api_key=api_key,
+                    model_name=model_name,
+                    name=name,
+                    url=url,
+                    notes=notes,
+                    qa_list=answers
+                )
+                return self._send_json({"success": True, "profile": synthesized})
+            except Exception as e:
+                logger.exception("プロファイル合成エラー")
+                return self._send_json({"success": False, "error": str(e)}, 500)
 
         # API: Gmail送信
         elif path == "/api/send_email":
@@ -459,11 +652,30 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
         else:
             return self._send_json({"error": "Not found"}, 404)
 
+    def do_DELETE(self):
+        """DELETE リクエスト処理（プロファイル削除など）"""
+        parsed = urlparse(self.path)
+        path = parsed.path
+
+        if path.startswith("/api/profiles/"):
+            pid = path.replace("/api/profiles/", "").strip()
+            try:
+                ok = profile_manager.delete_profile(pid)
+                if ok:
+                    return self._send_json({"success": True, "message": f"プロファイル '{pid}' を削除しました。"})
+                return self._send_json({"error": "Profile not found"}, 404)
+            except ValueError as ve:
+                return self._send_json({"success": False, "error": str(ve)}, 400)
+            except Exception as e:
+                return self._send_json({"success": False, "error": str(e)}, 500)
+        else:
+            return self._send_json({"error": "Not found"}, 404)
+
     def do_OPTIONS(self):
         """CORS プリフライト対応"""
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
 

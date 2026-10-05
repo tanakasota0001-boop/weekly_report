@@ -54,6 +54,11 @@ def format_report_to_markdown(report: Any) -> str:
     md = f"# {report.report_title}\n\n"
     kpi_meta = f" | **🎯 重点KPI:** {report.focus_kpi}" if report.focus_kpi else ""
     md += f"**対象部門/企業:** {report.company_name} | **生成日:** {report.generated_at}{kpi_meta}\n\n"
+
+    # 自社課題起点リサーチフォーカス
+    issue_summary = getattr(report, "issue_research_summary", None)
+    if issue_summary:
+        md += f"> 🎯 **自社課題逆引きリサーチ:** {issue_summary}\n\n"
     
     md += "## 💡 今週のマクロトレンド & 総括\n"
     md += f"{report.overall_trend_comment}\n\n"
@@ -68,12 +73,15 @@ def format_report_to_markdown(report: Any) -> str:
         md += "|:---:|:---|:---|:---:|:---:|:---:|:---:|:---|\n"
         for idx, idea in enumerate(report.ideas, 1):
             title = getattr(idea, "idea_title", None) or getattr(idea, "article_title", "") or f"アイデア {idx}"
+            is_breakthrough = getattr(idea, "is_issue_driven_breakthrough", False)
+            title_prefix = "🎯 " if is_breakthrough else ""
+            
             global_tag = "🇺🇸海外" if getattr(idea, "is_global", False) else "🇯🇵国内"
             source_arts = getattr(idea, "source_articles", [])
             if source_arts:
-                sources_str = ", ".join([f"{'🇺🇸' if a.is_global else '🇯🇵'}{a.source or 'メディア'}" for a in source_arts[:2]])
+                sources_str = ", ".join([f"{'🎯' if getattr(a, 'is_issue_driven', False) else ('🇺🇸' if a.is_global else '🇯🇵')}{a.source or 'メディア'}" for a in source_arts[:2]])
             else:
-                sources_str = global_tag
+                sources_str = "🎯逆引き" if is_breakthrough else global_tag
 
             imp = getattr(idea, "impact_score", 4)
             fea = getattr(idea, "feasibility_score", 3)
@@ -81,7 +89,7 @@ def format_report_to_markdown(report: Any) -> str:
             mkt = getattr(idea, "target_market_size", "中")
             vrd = _verdict_badge(getattr(idea, "objective_verdict", ""))
 
-            md += f"| **{idx}** | **{title}** | {sources_str} | {_score_stars(imp)} | {_score_stars(fea)} | {_score_stars(spd)} | {mkt} | {vrd} |\n"
+            md += f"| **{idx}** | **{title_prefix}{title}** | {sources_str} | {_score_stars(imp)} | {_score_stars(fea)} | {_score_stars(spd)} | {mkt} | {vrd} |\n"
         md += "\n"
 
         # =========================================================================
@@ -92,11 +100,13 @@ def format_report_to_markdown(report: Any) -> str:
         md += "|:---:|:---|:---|:---|:---|:---|\n"
         for idx, idea in enumerate(report.ideas, 1):
             title = getattr(idea, "idea_title", None) or getattr(idea, "article_title", "") or f"アイデア {idx}"
+            is_breakthrough = getattr(idea, "is_issue_driven_breakthrough", False)
+            title_prefix = "🎯 " if is_breakthrough else ""
             imp = getattr(idea, "impact_score", 4)
             fea = getattr(idea, "feasibility_score", 3)
             spd = getattr(idea, "speed_score", 3)
             act = _recommended_action(imp, fea)
-            md += f"| **{idx}** | **{title}** | `{_score_bar(imp)}` | `{_score_bar(fea)}` | `{_score_bar(spd)}` | {act} |\n"
+            md += f"| **{idx}** | **{title_prefix}{title}** | `{_score_bar(imp)}` | `{_score_bar(fea)}` | `{_score_bar(spd)}` | {act} |\n"
         md += "\n---\n\n"
 
     # =========================================================================
@@ -104,8 +114,10 @@ def format_report_to_markdown(report: Any) -> str:
     # =========================================================================
     for idx, idea in enumerate(report.ideas, 1):
         idea_title = getattr(idea, "idea_title", None) or getattr(idea, "article_title", "") or f"事業アイデア {idx}"
-        global_badge = " [🇺🇸 海外先行事例]" if getattr(idea, "is_global", False) else ""
-        md += f"## 🚀 アイデア {idx}: {idea_title}{global_badge}\n\n"
+        is_breakthrough = getattr(idea, "is_issue_driven_breakthrough", False)
+        breakthrough_badge = " [🎯 自社課題突破案]" if is_breakthrough else ""
+        global_badge = " [🇺🇸 海外先行事例]" if getattr(idea, "is_global", False) and not is_breakthrough else ""
+        md += f"## 🚀 アイデア {idx}: {idea_title}{breakthrough_badge}{global_badge}\n\n"
 
         # スコアカード
         imp = getattr(idea, "impact_score", 4)
@@ -114,12 +126,22 @@ def format_report_to_markdown(report: Any) -> str:
         mkt = getattr(idea, "target_market_size", "中")
         md += f"> **【定量スコア】** 🎯 **インパクト:** `{_score_bar(imp)}` | ⚡ **実現容易性:** `{_score_bar(fea)}` | ⏱️ **検証スピード:** `{_score_bar(spd)}` | 🏢 **市場規模:** `{mkt}`\n\n"
 
+        # 解決対象の切実な課題
+        addressed_issue = getattr(idea, "addressed_issue", None)
+        if addressed_issue:
+            md += f"> 🎯 **解決を狙う自社の切実な課題:** **{addressed_issue}**\n\n"
+
         # 複数記事の参照情報
         source_arts = getattr(idea, "source_articles", [])
         if source_arts:
             md += "### 📰 着想元となった複数記事 & 先行事例\n"
             for a in source_arts:
-                g_tag = "[🇺🇸 海外]" if getattr(a, "is_global", False) else "[🇯🇵 国内]"
+                if getattr(a, "is_issue_driven", False):
+                    g_tag = "[🎯 課題逆引き]"
+                elif getattr(a, "is_global", False):
+                    g_tag = "[🇺🇸 海外]"
+                else:
+                    g_tag = "[🇯🇵 国内]"
                 src_info = f" (出所: {a.source})" if getattr(a, "source", "") else ""
                 md += f"- **{g_tag} [{a.title}]({a.url})**{src_info}\n"
                 if getattr(a, "summary", ""):
@@ -158,7 +180,12 @@ def format_report_to_markdown(report: Any) -> str:
         md += f"| 💡 **解決・事業化案** | **{idea.solution_idea}** |\n"
         md += f"| 💰 **マネタイズモデル** | {idea.monetization_model} |\n"
         md += f"| 🎯 **自社KPIへの貢献** | **{idea.kpi_impact}** |\n"
-        md += f"| 🚀 **自社での最初の打ち手** | `{idea.internal_next_action}` |\n\n"
+        md += f"| 🚀 **自社での最初の打ち手** | `{idea.internal_next_action}` |\n"
+        if getattr(idea, "required_resources", None):
+            md += f"| 🛠️ **推奨PoCリソース** | `{idea.required_resources}` |\n"
+        if getattr(idea, "resource_fit_note", None):
+            md += f"| 🧩 **リソース適合性** | {idea.resource_fit_note} |\n"
+        md += "\n"
 
         # 守り・リスク評価 (表形式)
         md += "### 🛡️ 守り・リスク評価 (Critical Defense & Risk)\n\n"
@@ -202,8 +229,11 @@ def format_report_to_html(report: WeeklyReport) -> str:
     ideas_html = ""
     for idx, idea in enumerate(report.ideas, 1):
         idea_title = getattr(idea, "idea_title", None) or getattr(idea, "article_title", "") or f"事業アイデア {idx}"
+        is_breakthrough = getattr(idea, "is_issue_driven_breakthrough", False)
         is_global = getattr(idea, "is_global", False)
-        global_badge = '<span style="background-color: #5c2d91; color: #ffffff; font-size: 11px; font-weight: normal; padding: 2px 8px; border-radius: 10px; margin-left: 8px; vertical-align: middle;">🇺🇸 海外先行事例</span>' if is_global else ''
+        
+        breakthrough_badge = '<span style="background-color: #0b57d0; color: #ffffff; font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 10px; margin-left: 8px; vertical-align: middle;">🎯 課題逆引き突破案</span>' if is_breakthrough else ''
+        global_badge = '<span style="background-color: #5c2d91; color: #ffffff; font-size: 11px; font-weight: normal; padding: 2px 8px; border-radius: 10px; margin-left: 8px; vertical-align: middle;">🇺🇸 海外先行事例</span>' if (is_global and not is_breakthrough) else ''
 
         imp = getattr(idea, "impact_score", 4)
         fea = getattr(idea, "feasibility_score", 3)
@@ -323,12 +353,22 @@ def format_report_to_html(report: WeeklyReport) -> str:
         </div>
         """
 
+        addressed_issue_box = ""
+        addressed_issue = getattr(idea, "addressed_issue", None)
+        if addressed_issue:
+            addressed_issue_box = f"""
+            <div style="background-color: #eef2ff; border-left: 4px solid #4f46e5; padding: 10px 14px; border-radius: 0 4px 4px 0; margin-bottom: 12px; font-size: 13px; line-height: 1.5; color: #3730a3;">
+                <strong>🎯 解決を狙う自社の切実な課題:</strong> <strong>{addressed_issue}</strong>
+            </div>
+            """
+
         ideas_html += f"""
         <div style="margin-bottom: 30px; padding: 22px; background-color: #ffffff; border: 1px solid #e1dfdd; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.06);">
             <h3 style="margin-top: 0; color: #0078d4; font-size: 18px; border-bottom: 2px solid #0078d4; padding-bottom: 8px;">
-                🚀 アイデア {idx}: {idea_title} {global_badge}
+                🚀 アイデア {idx}: {idea_title} {breakthrough_badge}{global_badge}
             </h3>
             {score_meters_html}
+            {addressed_issue_box}
             {flow_box}
             {sources_box}
             {synergy_box}
@@ -379,7 +419,7 @@ def format_report_to_html(report: WeeklyReport) -> str:
                         {idea.kpi_impact}
                     </td>
                 </tr>
-                <tr>
+                <tr style="border-bottom: 1px solid #f3f2f1;">
                     <td style="font-weight: bold; color: #004e8c; padding: 8px 6px; vertical-align: top; background-color: #f0f7ff;">
                         🚀 自社の打ち手
                     </td>
@@ -387,6 +427,22 @@ def format_report_to_html(report: WeeklyReport) -> str:
                         {idea.internal_next_action}
                     </td>
                 </tr>
+                {f'''<tr style="border-bottom: 1px solid #f3f2f1;">
+                    <td style="font-weight: bold; color: #b14700; padding: 8px 6px; vertical-align: top; background-color: #fffaf0;">
+                        🛠️ 推奨PoCリソース
+                    </td>
+                    <td style="padding: 8px 6px; color: #323130; font-weight: bold;">
+                        {idea.required_resources}
+                    </td>
+                </tr>''' if getattr(idea, "required_resources", None) else ''}
+                {f'''<tr>
+                    <td style="font-weight: bold; color: #498205; padding: 8px 6px; vertical-align: top; background-color: #f8fbf5;">
+                        🧩 リソース適合性
+                    </td>
+                    <td style="padding: 8px 6px; color: #323130;">
+                        {idea.resource_fit_note}
+                    </td>
+                </tr>''' if getattr(idea, "resource_fit_note", None) else ''}
             </table>
 
             <h4 style="margin: 16px 0 8px 0; font-size: 15px; color: #a80000; border-bottom: 1px dashed #c8c6c4; padding-bottom: 4px;">
@@ -444,6 +500,10 @@ def format_report_to_html(report: WeeklyReport) -> str:
                     対象: {report.company_name} | 発行日: {report.generated_at}{f' | 🎯 重点KPI: {report.focus_kpi}' if report.focus_kpi else ''}
                 </p>
             </div>
+
+            {f'''<div style="background-color: #eef2ff; border-left: 5px solid #4f46e5; padding: 14px 18px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; color: #3730a3; line-height: 1.5;">
+                <strong>🎯 自社課題逆引きリサーチ:</strong> {getattr(report, "issue_research_summary", "")}
+            </div>''' if getattr(report, "issue_research_summary", None) else ''}
 
             <!-- 総括ハイライト -->
             <div style="background-color: #e8f4fc; border-left: 5px solid #0078d4; padding: 16px 20px; border-radius: 4px; margin-bottom: 25px;">
@@ -750,6 +810,8 @@ def build_adaptive_card(report: WeeklyReport) -> dict:
             {"title": "マネタイズ", "value": idea.monetization_model},
             {"title": "🎯KPI貢献", "value": idea.kpi_impact},
             {"title": "自社の打ち手", "value": idea.internal_next_action},
+            {"title": "🛠️PoCリソース", "value": getattr(idea, "required_resources", None) or "標準"},
+            {"title": "🧩適合理由", "value": getattr(idea, "resource_fit_note", None) or "自社体制で検証可"},
             {"title": "⚡実現性/難易度", "value": idea.feasibility_rating},
             {"title": "⚠️最大リスク/障壁", "value": idea.critical_risks},
             {"title": "👥顧客受容性", "value": idea.customer_readiness},
