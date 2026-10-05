@@ -1,115 +1,75 @@
-# ==========================================
-# ビジネス成長AIエージェント 設定ファイル
-# ==========================================
-
-# 1. 自社・ユーザープロファイル設定
 company:
-  # 会社名・サービス名
-  name: "HaveASite（ハブアサイト）"
+  name: HaveASite（ハブアサイト）
+  url: https://haveasite.com/
+  notes: '【サービス概要】
 
-  # 自社ホームページURL
-  # ※エージェントが自動でWebサイトを読み込み、強みやターゲットをプロファイリングします
-  url: "https://haveasite.com/"
-
-  # 自由記述指示・補足情報
-  # ※自社の強み、保有アセット、今後の成長に向けて注力したい関心領域
-  notes: |
-    【サービス概要】
     「契約前に実物を作るサブスク型ホームページ制作」
+
     初期費用0円・月額8,800円（税込）で、個人店・小規模事業者向けに初期0円で動く実物サンプルを先行提示し、
+
     ドメイン・サーバー・月5回までの修正更新まで丸投げで対応するサービス。最低契約期間なし。
 
+
     【ターゲット顧客】
+
     個人店・小規模事業者（飲食店、美容室・サロン、整体院、工務店、個人商店、士業など）。
+
     「SNSはあるが公式HPがない」「初期費用数十万円は払えない」「ITが苦手で丸投げしたい」「準備に時間をかけられない」店舗オーナー。
 
+
     【保有アセット・強み】
+
     - 「契約前に実物サンプルを作る」強力な成約・信頼獲得プロセス
+
     - 初期0円・月額8,800円の圧倒的コストパフォーマンスと明瞭なサブスクモデル
+
     - スモールビジネス特化の企画・デザイン・運用保守のワンストップ体制
 
+
     【今後の検討・注力テーマ】
+
     1. 生成AIを活用したHP制作・コンテンツ生成の自動化・工数削減（利益率向上）
+
     2. 個人店向けの集客支援（MEO/Googleビジネスプロフィール連携、LINE公式、AI口コミ返信、AI予約等）の追加オプション・クロスセル
+
     3. 小規模事業者が直面する「人手不足」「集客難」「ITリテラシー格差」を解決する新サービス・新マネタイズモデルの創出
 
-  # 直近の重点課題 & 注力KPI（キャッシュ再生成なしで動的に分析へ反映されます）
+    '
   current_challenges:
-    focus_kpi: "既存顧客の月額解約率（Churn Rate）の低減 & 顧客LTV最大化"
+    focus_kpi: 顧客の獲得
     urgent_issues:
-      - "「HP公開後に更新・活用方法がわからない」店舗オーナーの放置・離脱防止"
-      - "店舗集客に直結するオプション（MEO連携、AI口コミ返信、LINE連携）のクロスセル"
-      - "顧客対応・更新作業にかかる運用工数の削減（粗利率向上）"
-
-# 2. ニュース収集設定
+    - 飛び込み営業をしているが、顧客が取れない。InstagramなどのSNSが主流の今、HPを必要としていないオーナーが多い。
 news:
-  # 国内ニュース収集キーワード（HaveASiteのターゲットや技術動向に特化）
   keywords:
-    - "店舗 DX AI"
-    - "小規模事業者 集客 AI"
-    - "Web制作 生成AI"
-    - "MEO Googleビジネスプロフィール"
-    - "中小企業 IT導入 課題"
-  
-  # 国内ニュースの最大収集件数
+  - 店舗 DX AI
+  - 小規模事業者 集客 AI
+  - Web制作 生成AI
+  - 中小企業 IT導入 課題
   max_articles_to_collect: 20
-
-  # 海外トレンド・先行SaaS事例（Product Hunt / 米国Tech動向）
   global_sources:
-    # 海外ソースの収集を有効化するかどうか
     enabled: true
-    # 収集する最大海外プロダクト・記事数
     max_articles_to_collect: 10
-    # Product Hunt（最新AI/SaaSプロダクト）の取得
     enable_product_hunt: true
-    # 米国Google News（英語）の検索キーワード
     us_keywords:
-      - "AI tool for small business"
-      - "SMB SaaS AI automation"
-      - "local business AI tools"
-      - "AI website builder"
-
-  # スクリーニング後に詳細レポートを作成する上位記事数
+    - AI tool for small business
+    - SMB SaaS AI automation
+    - local business AI tools
+    - AI website builder
   top_articles_to_report: 3
-
-# 3. リサーチ・分析設定 (NEW)
 research:
-  # 上位選定記事の本文Webスクレイピングを行うかどうか
   enable_scraping: true
-  # スクレイピングで取得する本文の最大文字数
   max_article_chars: 3500
-
-  # GeminiのGoogle Search Grounding（Web検索）で市場背景や競合事例を追加調査するかどうか
   enable_search_grounding: true
-
-  # Webスクレイピング時のSSL証明書検証（デフォルトで安全に検証し、社内プロキシエラー時は自動フォールバック）
   ssl_verify: true
-
-# 4. 通知・出力設定
 notification:
-  # 送信方法: "gmail", "outlook", "teams", "none"（ローカル保存のみ）
-  # ※MacやLinux、サーバー環境では "gmail" が推奨です
-  channel: "gmail"
-
-  # Gmail設定 (Mac/Windows/Linux対応・推奨)
-  # ※ .env に GMAIL_USER と GMAIL_APP_PASSWORD を設定してください
+  channel: outlook
   gmail:
-    to_email: "Tanaka.Sota@exc.epson.co.jp"  # レポートを受信したいメールアドレス（空欄時は送信元宛て）
-
-  # Outlook設定 (Windowsデスクトップ版Outlookアプリから自動送信)
+    to_email: Tanaka.Sota@exc.epson.co.jp
   outlook:
-    to_email: "Tanaka.Sota@exc.epson.co.jp"  # あなたの社内メールアドレスを指定してください
-    display_only: true                 # trueにすると送信せず、Outlookの作成画面を表示します
-
-  # Teams設定 (Webhook経由)
+    to_email: Tanaka.Sota@exc.epson.co.jp
+    display_only: true
   teams:
     enabled: false
-
-  # ローカルの reports/ フォルダにMarkdownファイルを保存するかどうか
   save_markdown_locally: true
-
-# 5. モデル設定
 model:
-  # 利用するGeminiモデル (推奨: Web検索グラウンディングに対応した gemini-2.5-flash)
-  name: "gemini-2.5-flash"
-
+  name: gemini-2.5-flash
