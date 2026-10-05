@@ -72,4 +72,4 @@ notification:
     enabled: false
   save_markdown_locally: true
 model:
-  name: gemini-2.5-flash
+  name: gemini-3.8-flash

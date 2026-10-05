@@ -5,11 +5,12 @@ from google.genai import types
 
 logger = logging.getLogger(__name__)
 
-# 安定して動作するフォールバックモデル一覧
+# 安定して動作する現行の最新フォールバックモデル一覧
 CANDIDATE_MODELS = [
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash"
+    "gemini-3.8-flash",
+    "gemini-3.5-flash",
+    "gemini-flash-latest",
+    "gemini-3.1-flash-lite"
 ]
 
 
@@ -21,10 +22,14 @@ def generate_with_fallback(
     max_retries_per_model: int = 2
 ):
     """
-    一時的な503混雑エラーやモデル利用不可に対応するため、
-    リトライおよび代替モデルへの自動フォールバックを行う
+    一時的な503混雑エラー、429レート制限、またはモデル非推奨・404に対応するため、
+    リトライおよび最新代替モデルへの自動フォールバックを行う
     """
-    models_to_try = [preferred_model] + [m for m in CANDIDATE_MODELS if m != preferred_model]
+    # preferred_model を先頭に、CANDIDATE_MODELS から重複を除いて順序付け
+    models_to_try = [preferred_model]
+    for m in CANDIDATE_MODELS:
+        if m != preferred_model and m not in models_to_try:
+            models_to_try.append(m)
 
     last_error = None
     for model_name in models_to_try:
@@ -40,10 +45,17 @@ def generate_with_fallback(
             except Exception as e:
                 err_str = str(e)
                 last_error = e
-                # 503混雑や429レート制限の場合は少し待ってリトライ
-                if "503" in err_str or "UNAVAILABLE" in err_str or "429" in err_str:
-                    logger.warning(f"モデル {model_name} が混雑しています (503/429)。2秒後に再試行します...")
-                    time.sleep(2)
+
+                # 404 NOT_FOUND（モデル廃止・非推奨）の場合はリトライせず即座に次のモデル候補へ
+                if "404" in err_str or "NOT_FOUND" in err_str or "no longer available" in err_str:
+                    logger.warning(f"モデル {model_name} は利用不可（404/廃止）です。最新の代替モデル候補に切り替えます。")
+                    break
+
+                # 503混雑や429レート制限の場合は待機してリトライ
+                if "503" in err_str or "UNAVAILABLE" in err_str or "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                    wait_sec = 2 * (attempt + 1)
+                    logger.warning(f"モデル {model_name} が混雑またはレート制限です (503/429)。{wait_sec}秒待機して再試行します...")
+                    time.sleep(wait_sec)
                 else:
                     logger.warning(f"モデル {model_name} でエラーが発生しました: {e}。次のモデル候補に切り替えます。")
                     break

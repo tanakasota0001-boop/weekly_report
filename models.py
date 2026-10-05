@@ -2,14 +2,18 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
-class CompanyProfile(BaseModel):
-    """自社・ユーザーのプロファイル情報"""
+class CompanyProfileBase(BaseModel):
+    """自社・ユーザーのプロファイル情報（AI分析・生成対象）"""
     name: str = Field(description="会社名または事業部名")
     core_business: str = Field(description="主要な事業ドメインや提供価値")
     target_customers: str = Field(description="主なターゲット顧客層")
     key_assets: List[str] = Field(description="保有する強み・アセット（顧客網、技術力、データ等）")
     focus_themes: List[str] = Field(description="関心・注力したいテーマや課題領域")
     raw_summary: str = Field(description="プロファイル全体のサマリー")
+
+
+class CompanyProfile(CompanyProfileBase):
+    """自社・ユーザーのプロファイル情報（動的課題・KPIを含む完全版）"""
     current_challenges: Optional[dict] = Field(default=None, description="直近の重点課題や注力KPI")
 
 

@@ -7,7 +7,7 @@ from typing import Optional
 from google import genai
 from google.genai import types
 
-from models import CompanyProfile
+from models import CompanyProfile, CompanyProfileBase
 
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -120,7 +120,7 @@ def build_company_profile(
         config=types.GenerateContentConfig(
             system_instruction=system_instruction,
             response_mime_type="application/json",
-            response_schema=CompanyProfile,
+            response_schema=CompanyProfileBase,
             temperature=0.2
         )
     )
