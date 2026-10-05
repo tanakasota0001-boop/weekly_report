@@ -15,6 +15,8 @@
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN (Interactive Charts & Visual Data) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -322,6 +324,107 @@
           <p id="reportMacroTrend" class="text-xs md:text-sm text-md-on-surface-variant leading-relaxed font-normal pl-9">
             マクロ動向の要約を読み込み中...
           </p>
+        </div>
+
+        <!-- M3 視覚的ビジュアル分析 & 評価マトリクス (2カラムグリッド) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <!-- チャート1: 🎯 事業機会マトリクス (散布図 / 2軸ポジショニング) -->
+          <div class="bg-md-surface-container-lowest border border-md-outline-variant/30 rounded-3xl p-5 shadow-m3-1 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center space-x-2">
+                  <span class="w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center">
+                    <span class="material-symbols-rounded text-base">scatter_plot</span>
+                  </span>
+                  <div>
+                    <h3 class="text-xs font-bold text-md-on-surface">事業機会マトリクス (ポジショニング)</h3>
+                    <p class="text-2xs text-md-on-surface-variant">X軸: 実現容易性 (高) ✕ Y軸: 自社KPIインパクト (大)</p>
+                  </div>
+                </div>
+                <span class="text-2xs px-2.5 py-0.5 rounded-full bg-md-primary-container text-md-on-primary-container font-semibold">2軸分析</span>
+              </div>
+              
+              <!-- 象限ガイドバッジ -->
+              <div class="flex flex-wrap items-center gap-1.5 mb-3 text-2xs">
+                <span class="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 font-medium">右上: 🚀 クイックウィン (即時推進)</span>
+                <span class="px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200 font-medium">左上: 🎯 戦略的投資 (PoC検証)</span>
+                <span class="px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 font-medium">右下: ⚡ 即効小改善</span>
+              </div>
+
+              <!-- Canvas -->
+              <div class="relative h-60 w-full">
+                <canvas id="opportunityMatrixChart"></canvas>
+              </div>
+            </div>
+            <p class="text-2xs text-md-on-surface-variant mt-2 text-center">💡 プロットをクリックすると、該当のアイデア詳細へジャンプします</p>
+          </div>
+
+          <!-- チャート2: 📈 アイデア別スコア比較 (3軸並列バーチャート) -->
+          <div class="bg-md-surface-container-lowest border border-md-outline-variant/30 rounded-3xl p-5 shadow-m3-1 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center space-x-2">
+                  <span class="w-7 h-7 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center">
+                    <span class="material-symbols-rounded text-base">bar_chart</span>
+                  </span>
+                  <div>
+                    <h3 class="text-xs font-bold text-md-on-surface">アイデア別スコア比較 (多角評価)</h3>
+                    <p class="text-2xs text-md-on-surface-variant">自社KPIインパクト / 実現容易性 / 検証スピード (1〜5)</p>
+                  </div>
+                </div>
+                <span class="text-2xs px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 font-semibold">スコア比較</span>
+              </div>
+
+              <!-- 凡例 -->
+              <div class="flex items-center space-x-3 mb-2 text-2xs">
+                <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span><span class="text-md-on-surface-variant">KPIインパクト</span></span>
+                <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span><span class="text-md-on-surface-variant">実現容易性</span></span>
+                <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span><span class="text-md-on-surface-variant">検証スピード</span></span>
+              </div>
+
+              <!-- Canvas -->
+              <div class="relative h-60 w-full">
+                <canvas id="multiScoreChart"></canvas>
+              </div>
+            </div>
+            <p class="text-2xs text-md-on-surface-variant mt-2 text-center">各アイデアの強み・難易度のバランスを一目で比較できます</p>
+          </div>
+        </div>
+
+        <!-- M3 エグゼクティブ比較サマリー表 (全アイデア一覧テーブル) -->
+        <div class="bg-md-surface-container-lowest border border-md-outline-variant/30 rounded-3xl p-6 shadow-m3-1">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center space-x-2.5">
+              <span class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                <span class="material-symbols-rounded text-lg">table_chart</span>
+              </span>
+              <div>
+                <h3 class="text-sm font-bold text-md-on-surface">エグゼクティブ比較サマリー表</h3>
+                <p class="text-2xs text-md-on-surface-variant">今週立案されたすべての事業アイデアの重要指標を一覧比較</p>
+              </div>
+            </div>
+            <span class="text-2xs px-3 py-1 rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200 font-bold" id="execTableIdeaCount">全 0 件</span>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="bg-md-surface-container-low text-md-on-surface-variant border-b border-md-outline-variant/30 font-semibold">
+                  <th class="py-3 px-3 text-center w-12">No</th>
+                  <th class="py-3 px-3 min-w-[200px]">アイデア企画名</th>
+                  <th class="py-3 px-3 min-w-[120px]">先行事例</th>
+                  <th class="py-3 px-3 text-center min-w-[100px]">KPIインパクト</th>
+                  <th class="py-3 px-3 text-center min-w-[100px]">実現容易性</th>
+                  <th class="py-3 px-3 text-center min-w-[90px]">スピード</th>
+                  <th class="py-3 px-3 min-w-[140px]">参謀ジャッジ</th>
+                  <th class="py-3 px-3 text-center w-20">詳細</th>
+                </tr>
+              </thead>
+              <tbody id="execTableBody" class="divide-y divide-md-outline-variant/20">
+                <!-- JSで動的レンダリング -->
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <!-- M3 フィルターチップス & 検索ドック -->
@@ -850,6 +953,28 @@
       }
     }
 
+    // チャートインスタンス保持用変数
+    let opportunityChartInstance = null;
+    let multiScoreChartInstance = null;
+
+    // 星評価ヘルパー
+    function getStars(score) {
+      const s = Math.max(1, Math.min(5, score || 3));
+      return "★".repeat(s) + "☆".repeat(5 - s);
+    }
+
+    // アイデアカードへスムーズスクロール
+    function scrollToIdeaCard(idx) {
+      const el = document.getElementById(`ideaCard-${idx}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-4', 'ring-md-primary/40', 'border-md-primary');
+        setTimeout(() => {
+          el.classList.remove('ring-4', 'ring-md-primary/40', 'border-md-primary');
+        }, 2200);
+      }
+    }
+
     // レポート内容をレンダリング
     function renderReport(report) {
       document.getElementById('reportHeaderTitle').innerText = report.report_title || '週次ビジネス成長レポート';
@@ -864,7 +989,8 @@
 
       document.getElementById('reportMacroTrend').innerText = report.overall_trend_comment || '今週の動向を分析中...';
 
-      allIdeas = report.ideas || [];
+      // アイデア一覧を格納し、インデックスを保持
+      allIdeas = (report.ideas || []).map((item, idx) => ({ ...item, originalIndex: idx }));
       document.getElementById('cardIdeaCount').innerHTML = `${allIdeas.length} <span class="text-xs font-normal text-md-on-surface-variant">件</span>`;
       
       const globalCount = allIdeas.filter(i => i.is_global || (i.source_articles && i.source_articles.some(a => a.is_global))).length;
@@ -873,9 +999,253 @@
       document.getElementById('countAll').innerText = allIdeas.length;
       document.getElementById('countJapan').innerText = allIdeas.filter(i => !i.is_global).length;
       document.getElementById('countGlobal').innerText = globalCount;
-      document.getElementById('countHigh').innerText = allIdeas.filter(i => (i.feasibility_rating || '').includes('高')).length;
+      document.getElementById('countHigh').innerText = allIdeas.filter(i => (i.feasibility_rating || '').includes('高') || (i.feasibility_score >= 4)).length;
 
+      // エグゼクティブ比較表・チャート・カード一覧をレンダリング
+      renderExecutiveTable(allIdeas);
+      renderCharts(allIdeas);
       renderIdeasList();
+    }
+
+    // エグゼクティブ比較サマリー表のレンダリング
+    function renderExecutiveTable(ideas) {
+      const tbody = document.getElementById('execTableBody');
+      const countBadge = document.getElementById('execTableIdeaCount');
+      if (!tbody) return;
+
+      countBadge.innerText = `全 ${ideas.length} 件`;
+      tbody.innerHTML = '';
+
+      if (ideas.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="py-6 text-center text-md-on-surface-variant">事業アイデアがありません</td></tr>`;
+        return;
+      }
+
+      ideas.forEach((idea, idx) => {
+        const title = idea.idea_title || idea.article_title || `事業アイデア ${idx + 1}`;
+        const isGlobal = idea.is_global || (idea.source_articles && idea.source_articles.some(a => a.is_global));
+        const badge = isGlobal
+          ? `<span class="bg-md-tertiary-container text-md-on-tertiary-container text-2xs px-2 py-0.5 rounded-full font-bold">🇺🇸 海外連動</span>`
+          : `<span class="bg-md-primary-container text-md-on-primary-container text-2xs px-2 py-0.5 rounded-full font-bold">🇯🇵 国内発想</span>`;
+
+        let sourcesText = '--';
+        if (idea.source_articles && idea.source_articles.length > 0) {
+          sourcesText = idea.source_articles.map(a => a.source || 'メディア').slice(0, 2).join(', ');
+        }
+
+        const imp = idea.impact_score || 4;
+        const fea = idea.feasibility_score || 3;
+        const spd = idea.speed_score || 3;
+
+        let verdictBadge = `<span class="px-2.5 py-1 rounded-full text-2xs font-bold bg-blue-100 text-blue-900">${idea.objective_verdict ? idea.objective_verdict.slice(0, 12) : '検証中'}</span>`;
+        if ((idea.objective_verdict || '').includes('即座') || (idea.objective_verdict || '').includes('即着手')) {
+          verdictBadge = `<span class="px-2.5 py-1 rounded-full text-2xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">🟢 即座に着手</span>`;
+        } else if ((idea.objective_verdict || '').includes('限定')) {
+          verdictBadge = `<span class="px-2.5 py-1 rounded-full text-2xs font-bold bg-amber-100 text-amber-900 border border-amber-300">🟡 限定検証</span>`;
+        } else if ((idea.objective_verdict || '').includes('見送り')) {
+          verdictBadge = `<span class="px-2.5 py-1 rounded-full text-2xs font-bold bg-rose-100 text-rose-900 border border-rose-300">🔴 見送り</span>`;
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-md-surface-container-low transition-colors cursor-pointer";
+        tr.onclick = (e) => {
+          if (e.target.tagName !== 'BUTTON') scrollToIdeaCard(idea.originalIndex !== undefined ? idea.originalIndex : idx);
+        };
+
+        tr.innerHTML = `
+          <td class="py-3 px-3 text-center font-bold text-md-primary font-mono">${idx + 1}</td>
+          <td class="py-3 px-3 font-bold text-md-on-surface">
+            <div class="flex items-center space-x-1.5 flex-wrap">
+              ${badge}
+              <span>${title}</span>
+            </div>
+          </td>
+          <td class="py-3 px-3 text-2xs text-md-on-surface-variant">${sourcesText}</td>
+          <td class="py-3 px-3 text-center font-semibold text-rose-600">
+            <span class="font-mono text-xs">${getStars(imp)}</span>
+            <span class="text-2xs text-rose-700 font-bold ml-1">(${imp})</span>
+          </td>
+          <td class="py-3 px-3 text-center font-semibold text-blue-600">
+            <span class="font-mono text-xs">${getStars(fea)}</span>
+            <span class="text-2xs text-blue-700 font-bold ml-1">(${fea})</span>
+          </td>
+          <td class="py-3 px-3 text-center font-semibold text-emerald-600">
+            <span class="font-mono text-xs">${getStars(spd)}</span>
+            <span class="text-2xs text-emerald-700 font-bold ml-1">(${spd})</span>
+          </td>
+          <td class="py-3 px-3">${verdictBadge}</td>
+          <td class="py-3 px-3 text-center">
+            <button onclick="scrollToIdeaCard(${idea.originalIndex !== undefined ? idea.originalIndex : idx})" class="px-3 py-1 rounded-full text-2xs font-semibold bg-md-surface-container-high hover:bg-md-primary hover:text-white transition text-md-on-surface">
+              表示
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Chart.js インタラクティブチャートのレンダリング
+    function renderCharts(ideas) {
+      if (typeof Chart === 'undefined') return;
+
+      // 1. 事業機会マトリクス (散布図 / バブルチャート)
+      const matrixCtx = document.getElementById('opportunityMatrixChart');
+      if (matrixCtx) {
+        if (opportunityChartInstance) opportunityChartInstance.destroy();
+
+        const bubbleData = ideas.map((idea, idx) => {
+          const imp = idea.impact_score || 4;
+          const fea = idea.feasibility_score || 3;
+          const spd = idea.speed_score || 3;
+          return {
+            x: fea,
+            y: imp,
+            r: spd * 3.5 + 6,
+            ideaIndex: idea.originalIndex !== undefined ? idea.originalIndex : idx,
+            ideaTitle: idea.idea_title || idea.article_title || `アイデア ${idx + 1}`,
+            speed: spd
+          };
+        });
+
+        opportunityChartInstance = new Chart(matrixCtx, {
+          type: 'bubble',
+          data: {
+            datasets: [{
+              label: '事業アイデア',
+              data: bubbleData,
+              backgroundColor: bubbleData.map(d => {
+                if (d.y >= 4 && d.x >= 4) return 'rgba(16, 185, 129, 0.75)'; // クイックウィン (緑)
+                if (d.y >= 4) return 'rgba(11, 87, 208, 0.75)'; // 戦略的投資 (青)
+                if (d.x >= 4) return 'rgba(245, 158, 11, 0.75)'; // 即効小改善 (黄)
+                return 'rgba(156, 163, 175, 0.75)'; // その他
+              }),
+              borderColor: '#ffffff',
+              borderWidth: 2,
+              hoverRadius: 16
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                min: 0.8,
+                max: 5.2,
+                title: {
+                  display: true,
+                  text: '⚡ 実現容易性 (1:高難度 → 5:容易/即着手)',
+                  font: { size: 10, weight: 'bold' }
+                },
+                ticks: { stepSize: 1, font: { size: 10 } },
+                grid: { color: 'rgba(0,0,0,0.05)' }
+              },
+              y: {
+                min: 0.8,
+                max: 5.2,
+                title: {
+                  display: true,
+                  text: '🎯 自社KPIインパクト (1:小 → 5:特大)',
+                  font: { size: 10, weight: 'bold' }
+                },
+                ticks: { stepSize: 1, font: { size: 10 } },
+                grid: { color: 'rgba(0,0,0,0.05)' }
+              }
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    const raw = context.raw;
+                    return [
+                      `#${raw.ideaIndex + 1} ${raw.ideaTitle}`,
+                      `インパクト: ${raw.y}/5 | 実現性: ${raw.x}/5 | 検証スピード: ${raw.speed}/5`
+                    ];
+                  }
+                }
+              }
+            },
+            onClick: (event, elements) => {
+              if (elements.length > 0) {
+                const elementIndex = elements[0].index;
+                const target = bubbleData[elementIndex];
+                if (target) scrollToIdeaCard(target.ideaIndex);
+              }
+            }
+          }
+        });
+      }
+
+      // 2. アイデア別スコア比較 (3軸グループ棒グラフ)
+      const multiCtx = document.getElementById('multiScoreChart');
+      if (multiCtx) {
+        if (multiScoreChartInstance) multiScoreChartInstance.destroy();
+
+        const labels = ideas.map((idea, idx) => {
+          const t = idea.idea_title || idea.article_title || `アイデア ${idx + 1}`;
+          return `#${idx + 1} ` + (t.length > 9 ? t.slice(0, 9) + '…' : t);
+        });
+
+        multiScoreChartInstance = new Chart(multiCtx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'KPIインパクト',
+                data: ideas.map(i => i.impact_score || 4),
+                backgroundColor: 'rgba(11, 87, 208, 0.85)',
+                borderRadius: 4
+              },
+              {
+                label: '実現容易性',
+                data: ideas.map(i => i.feasibility_score || 3),
+                backgroundColor: 'rgba(16, 185, 129, 0.85)',
+                borderRadius: 4
+              },
+              {
+                label: '検証スピード',
+                data: ideas.map(i => i.speed_score || 3),
+                backgroundColor: 'rgba(245, 158, 11, 0.85)',
+                borderRadius: 4
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                min: 0,
+                max: 5,
+                ticks: { stepSize: 1, font: { size: 10 } },
+                grid: { color: 'rgba(0,0,0,0.05)' }
+              },
+              x: {
+                ticks: { font: { size: 10 } },
+                grid: { display: false }
+              }
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  afterLabel: function(context) {
+                    return '/ 5点満点';
+                  }
+                }
+              }
+            },
+            onClick: (event, elements) => {
+              if (elements.length > 0) {
+                const elementIndex = elements[0].index;
+                const idea = ideas[elementIndex];
+                if (idea) scrollToIdeaCard(idea.originalIndex !== undefined ? idea.originalIndex : elementIndex);
+              }
+            }
+          }
+        });
+      }
     }
 
     // アイデアフィルター
@@ -897,7 +1267,7 @@
       renderIdeasList(query);
     }
 
-    // M3 アイデアカード一覧レンダリング
+    // M3 アイデアカード一覧レンダリング（表・ゲージ・フロー満載）
     function renderIdeasList(searchQuery = '') {
       const container = document.getElementById('ideasListContainer');
       container.innerHTML = '';
@@ -905,7 +1275,7 @@
       let filtered = allIdeas.filter(item => {
         if (currentFilter === 'japan' && item.is_global) return false;
         if (currentFilter === 'global' && !item.is_global) return false;
-        if (currentFilter === 'high' && !(item.feasibility_rating || '').includes('高')) return false;
+        if (currentFilter === 'high' && !(item.feasibility_rating || '').includes('高') && (item.feasibility_score < 4)) return false;
         if (searchQuery) {
           const q = searchQuery.toLowerCase();
           const title = (item.idea_title || item.article_title || '').toLowerCase();
@@ -928,7 +1298,9 @@
 
       filtered.forEach((idea, idx) => {
         const card = document.createElement('div');
-        card.className = "bg-md-surface-container-lowest border border-md-outline-variant/30 rounded-3xl p-6 shadow-m3-1 space-y-4 hover:shadow-m3-2 hover:border-md-outline-variant/70 transition-all duration-200";
+        const cardId = idea.originalIndex !== undefined ? idea.originalIndex : idx;
+        card.id = `ideaCard-${cardId}`;
+        card.className = "bg-md-surface-container-lowest border border-md-outline-variant/30 rounded-3xl p-6 shadow-m3-1 space-y-4 hover:shadow-m3-2 transition-all duration-200 scroll-mt-24";
 
         const ideaTitle = idea.idea_title || idea.article_title || `事業アイデア ${idx + 1}`;
         const isGlobal = idea.is_global || (idea.source_articles && idea.source_articles.some(a => a.is_global));
@@ -937,9 +1309,14 @@
           : `<span class="bg-md-secondary-container text-md-on-secondary-container font-bold px-3 py-1 rounded-full text-2xs flex items-center space-x-1"><span>🇯🇵</span><span>国内発想</span></span>`;
 
         let feasClass = "bg-md-surface-container-high text-md-on-surface";
-        if ((idea.feasibility_rating || '').includes('高')) feasClass = "bg-emerald-100/80 text-emerald-900 border border-emerald-200";
-        else if ((idea.feasibility_rating || '').includes('低')) feasClass = "bg-rose-100/80 text-rose-900 border border-rose-200";
-        else if ((idea.feasibility_rating || '').includes('中')) feasClass = "bg-amber-100/80 text-amber-900 border border-amber-200";
+        if ((idea.feasibility_rating || '').includes('高') || (idea.feasibility_score >= 4)) feasClass = "bg-emerald-100/80 text-emerald-900 border border-emerald-200";
+        else if ((idea.feasibility_rating || '').includes('低') || (idea.feasibility_score <= 2)) feasClass = "bg-rose-100/80 text-rose-900 border border-rose-200";
+        else feasClass = "bg-amber-100/80 text-amber-900 border border-amber-200";
+
+        const imp = idea.impact_score || 4;
+        const fea = idea.feasibility_score || 3;
+        const spd = idea.speed_score || 3;
+        const mkt = idea.target_market_size || "中";
 
         // 着想元となった複数記事ブロック
         let sourcesHtml = '';
@@ -999,17 +1376,95 @@
           `;
         }
 
+        // 定量評価スコアメーター (ゲージバー)
+        const scoreMetersHtml = `
+          <div class="bg-md-surface-container-low border border-md-outline-variant/30 rounded-2xl p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-md-on-surface flex items-center space-x-1">
+                <span class="material-symbols-rounded text-sm text-md-primary">speed</span>
+                <span>定量評価スコアメーター</span>
+              </span>
+              <span class="text-2xs px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold">市場規模: ${mkt}</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              <!-- KPIインパクト -->
+              <div class="bg-white/90 p-2.5 rounded-xl border border-md-outline-variant/20 shadow-2xs">
+                <div class="flex items-center justify-between text-2xs mb-1 font-bold">
+                  <span class="text-rose-700">🎯 自社KPIインパクト</span>
+                  <span class="font-mono text-rose-800">${imp} / 5</span>
+                </div>
+                <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                  <div class="bg-rose-500 h-full rounded-full transition-all duration-500" style="width: ${imp * 20}%"></div>
+                </div>
+              </div>
+              <!-- 実現容易性 -->
+              <div class="bg-white/90 p-2.5 rounded-xl border border-md-outline-variant/20 shadow-2xs">
+                <div class="flex items-center justify-between text-2xs mb-1 font-bold">
+                  <span class="text-blue-700">⚡ 実現容易性</span>
+                  <span class="font-mono text-blue-800">${fea} / 5</span>
+                </div>
+                <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                  <div class="bg-blue-500 h-full rounded-full transition-all duration-500" style="width: ${fea * 20}%"></div>
+                </div>
+              </div>
+              <!-- 検証スピード -->
+              <div class="bg-white/90 p-2.5 rounded-xl border border-md-outline-variant/20 shadow-2xs">
+                <div class="flex items-center justify-between text-2xs mb-1 font-bold">
+                  <span class="text-emerald-700">⏱️ 検証スピード</span>
+                  <span class="font-mono text-emerald-800">${spd} / 5</span>
+                </div>
+                <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                  <div class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: ${spd * 20}%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        // 3ステップ事業創出フロー
+        const stepFlowHtml = `
+          <div class="bg-gradient-to-r from-slate-50 to-blue-50/30 border border-slate-200/80 rounded-2xl p-4">
+            <div class="text-2xs font-bold text-slate-500 mb-2 flex items-center space-x-1">
+              <span class="material-symbols-rounded text-sm">route</span>
+              <span>事業創出フロー (課題から成果へのロードマップ)</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-xs">
+              <div class="bg-white p-3 rounded-xl border border-rose-200/60 shadow-2xs">
+                <div class="font-bold text-rose-700 flex items-center space-x-1 mb-1">
+                  <span class="material-symbols-rounded text-xs">warning</span>
+                  <span>1. 顧客の課題 (Pain)</span>
+                </div>
+                <p class="text-2xs text-md-on-surface line-clamp-3 leading-relaxed">${idea.market_pain || '--'}</p>
+              </div>
+              <div class="bg-white p-3 rounded-xl border border-blue-200/60 shadow-2xs">
+                <div class="font-bold text-blue-700 flex items-center space-x-1 mb-1">
+                  <span class="material-symbols-rounded text-xs">smart_toy</span>
+                  <span>2. AIソリューション</span>
+                </div>
+                <p class="text-2xs text-md-on-surface line-clamp-3 leading-relaxed font-semibold">${idea.solution_idea || '--'}</p>
+              </div>
+              <div class="bg-white p-3 rounded-xl border border-emerald-200/60 shadow-2xs">
+                <div class="font-bold text-emerald-700 flex items-center space-x-1 mb-1">
+                  <span class="material-symbols-rounded text-xs">trending_up</span>
+                  <span>3. 成果 & 自社KPI達成</span>
+                </div>
+                <p class="text-2xs text-md-on-surface line-clamp-3 leading-relaxed font-semibold">${idea.kpi_impact || '--'}</p>
+              </div>
+            </div>
+          </div>
+        `;
+
         card.innerHTML = `
           <!-- カード上部ヘッダー -->
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-md-outline-variant/20 pb-3">
             <div class="flex items-center space-x-2.5 flex-wrap gap-y-1">
-              <span class="w-6 h-6 rounded-full bg-md-primary text-white text-xs font-bold flex items-center justify-center">
-                ${idx + 1}
+              <span class="w-6 h-6 rounded-full bg-md-primary text-white text-xs font-bold flex items-center justify-center font-mono">
+                ${cardId + 1}
               </span>
               <h3 class="text-base font-bold text-md-on-surface">${ideaTitle}</h3>
               ${globalBadge}
               <span class="text-2xs px-2.5 py-1 rounded-full font-semibold ${feasClass}">
-                ⚡ ${idea.feasibility_rating || '実現性: 未定'}
+                ⚡ 実現性: ${idea.feasibility_rating || '中'}
               </span>
             </div>
             ${idea.article_url ? `
@@ -1019,6 +1474,12 @@
               </a>
             ` : ''}
           </div>
+
+          <!-- 定量スコアメーター -->
+          ${scoreMetersHtml}
+
+          <!-- 事業創出フロー -->
+          ${stepFlowHtml}
 
           <!-- 着想元となった複数記事 -->
           ${sourcesHtml}
@@ -1048,82 +1509,80 @@
             </div>
           ` : ''}
 
-          <!-- 攻守の比較 2カラムグリッド -->
+          <!-- 攻守の比較 2カラム表グリッド -->
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-1">
             
-            <!-- 左カラム: 💡 攻めの事業企画 -->
-            <div class="bg-blue-50/40 border border-blue-200/50 rounded-2xl p-5 space-y-3.5">
-              <div class="font-bold text-blue-900 text-xs flex items-center space-x-1.5 border-b border-blue-200/40 pb-2.5">
+            <!-- 左カラム: 💡 攻めの事業企画 スペック表 -->
+            <div class="bg-blue-50/40 border border-blue-200/50 rounded-2xl p-5 space-y-3">
+              <div class="font-bold text-blue-900 text-xs flex items-center space-x-1.5 border-b border-blue-200/40 pb-2">
                 <span class="material-symbols-rounded text-sm text-blue-700">lightbulb</span>
-                <span>攻めの事業企画 (Solution & Monetization)</span>
+                <span>💡 攻めの事業企画スペック表</span>
               </div>
 
-              <div class="text-xs space-y-2.5">
-                <div>
-                  <span class="font-bold text-amber-800">💥 課題 (Pain):</span>
-                  <p class="text-md-on-surface mt-0.5 leading-relaxed">${idea.market_pain || '未定'}</p>
-                </div>
-                <div>
-                  <span class="font-bold text-emerald-800">⚙️ 最新技術 (Tech):</span>
-                  <p class="text-md-on-surface mt-0.5 leading-relaxed">${idea.latest_tech || '未定'}</p>
-                </div>
-                <div>
-                  <span class="font-bold text-blue-800">💡 解決・事業案:</span>
-                  <p class="text-md-on-surface font-semibold mt-0.5 leading-relaxed">${idea.solution_idea || '未定'}</p>
-                </div>
-                <div>
-                  <span class="font-bold text-purple-800">💰 マネタイズモデル:</span>
-                  <p class="text-md-on-surface mt-0.5 leading-relaxed">${idea.monetization_model || '未定'}</p>
-                </div>
-                <div>
-                  <span class="font-bold text-rose-800">🎯 自社KPI貢献インパクト:</span>
-                  <p class="text-md-on-surface font-semibold mt-0.5 leading-relaxed">${idea.kpi_impact || '未定'}</p>
-                </div>
-                <div class="bg-white/90 p-3 rounded-xl border border-blue-200/60 shadow-2xs">
-                  <span class="font-bold text-blue-900 flex items-center space-x-1">
-                    <span class="material-symbols-rounded text-xs">play_arrow</span>
-                    <span>自社での最初のアクション:</span>
-                  </span>
-                  <p class="text-md-on-surface mt-1 leading-relaxed">${idea.internal_next_action || '未定'}</p>
-                </div>
-              </div>
+              <table class="w-full text-xs border-collapse">
+                <tbody class="divide-y divide-blue-200/30">
+                  <tr>
+                    <td class="py-2 pr-2 font-bold text-amber-800 align-top w-28">💥 課題 (Pain)</td>
+                    <td class="py-2 text-md-on-surface leading-relaxed">${idea.market_pain || '未定'}</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 pr-2 font-bold text-emerald-800 align-top">⚙️ 最新技術 (Tech)</td>
+                    <td class="py-2 text-md-on-surface leading-relaxed">${idea.latest_tech || '未定'}</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 pr-2 font-bold text-blue-800 align-top">💡 解決・事業案</td>
+                    <td class="py-2 text-md-on-surface font-semibold leading-relaxed">${idea.solution_idea || '未定'}</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 pr-2 font-bold text-purple-800 align-top">💰 マネタイズ</td>
+                    <td class="py-2 text-md-on-surface leading-relaxed">${idea.monetization_model || '未定'}</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 pr-2 font-bold text-rose-800 align-top">🎯 自社KPI貢献</td>
+                    <td class="py-2 text-md-on-surface font-semibold leading-relaxed">${idea.kpi_impact || '未定'}</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 pr-2 font-bold text-blue-900 align-top">🚀 最初の打ち手</td>
+                    <td class="py-2 text-md-on-surface font-bold bg-white/80 px-2 rounded-lg leading-relaxed">${idea.internal_next_action || '未定'}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
 
-            <!-- 右カラム: 🛡️ 守り・リスク評価 (参謀批判) -->
-            <div class="bg-rose-50/30 border border-rose-200/50 rounded-2xl p-5 space-y-3.5">
-              <div class="font-bold text-rose-900 text-xs flex items-center space-x-1.5 border-b border-rose-200/40 pb-2.5">
+            <!-- 右カラム: 🛡️ 守り・リスク評価マトリクス表 -->
+            <div class="bg-rose-50/30 border border-rose-200/50 rounded-2xl p-5 space-y-3">
+              <div class="font-bold text-rose-900 text-xs flex items-center space-x-1.5 border-b border-rose-200/40 pb-2">
                 <span class="material-symbols-rounded text-sm text-rose-700">shield</span>
-                <span>守り・リスク評価 (Critical Defense & Risk)</span>
+                <span>🛡️ 守り・リスク評価マトリクス表</span>
               </div>
 
-              <div class="text-xs space-y-2.5">
-                <div>
-                  <span class="font-bold text-slate-800">⚡ 実現性・難易度:</span>
-                  <p class="text-md-on-surface mt-0.5 leading-relaxed">${idea.feasibility_rating || '未定'}</p>
-                </div>
-                <div>
-                  <span class="font-bold text-rose-800">⚠️ 最大リスク・参入障壁・やらない理由:</span>
-                  <p class="text-md-on-surface mt-0.5 leading-relaxed">${idea.critical_risks || '未定'}</p>
-                </div>
-                <div>
-                  <span class="font-bold text-amber-800">👥 顧客受容性・導入障壁 (個人店・中小):</span>
-                  <p class="text-md-on-surface mt-0.5 leading-relaxed">${idea.customer_readiness || '未定'}</p>
-                </div>
-                <div class="bg-white/90 p-3 rounded-xl border border-rose-200/60 shadow-2xs">
-                  <span class="font-bold text-rose-950 flex items-center space-x-1">
-                    <span class="material-symbols-rounded text-xs">gavel</span>
-                    <span>客観的参謀の辛口ジャッジ:</span>
-                  </span>
-                  <p class="text-md-on-surface mt-1 leading-relaxed">${idea.objective_verdict || '未定'}</p>
-                </div>
-              </div>
+              <table class="w-full text-xs border-collapse">
+                <tbody class="divide-y divide-rose-200/30">
+                  <tr>
+                    <td class="py-2 pr-2 font-bold text-slate-800 align-top w-28">⚡ 実現性・難易度</td>
+                    <td class="py-2 text-md-on-surface leading-relaxed">${idea.feasibility_rating || '未定'} (${getStars(fea)})</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 pr-2 font-bold text-rose-800 align-top">⚠️ 最大の盲点/障壁</td>
+                    <td class="py-2 text-md-on-surface leading-relaxed bg-white/60 px-1.5 rounded">${idea.critical_risks || '未定'}</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 pr-2 font-bold text-amber-800 align-top">👥 顧客受容性/障壁</td>
+                    <td class="py-2 text-md-on-surface leading-relaxed">${idea.customer_readiness || '未定'}</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 pr-2 font-bold text-rose-950 align-top">⚖️ 参謀辛口判定</td>
+                    <td class="py-2 text-md-on-surface font-semibold leading-relaxed bg-white/90 p-2 rounded-xl border border-rose-200/80">${idea.objective_verdict || '未定'}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
 
           </div>
 
           <!-- アクションフッター -->
           <div class="flex items-center justify-end space-x-2 pt-2 border-t border-md-outline-variant/20">
-            <button onclick="copySingleIdea(${idx})" class="text-xs font-semibold text-md-on-surface-variant hover:text-md-on-surface bg-md-surface-container-low hover:bg-md-surface-container px-4 py-2 rounded-full transition flex items-center space-x-1.5">
+            <button onclick="copySingleIdea(${cardId})" class="text-xs font-semibold text-md-on-surface-variant hover:text-md-on-surface bg-md-surface-container-low hover:bg-md-surface-container px-4 py-2 rounded-full transition flex items-center space-x-1.5">
               <span class="material-symbols-rounded text-sm">content_copy</span>
               <span>アイデアをコピー</span>
             </button>

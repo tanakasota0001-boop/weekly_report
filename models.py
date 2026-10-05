@@ -75,6 +75,12 @@ class BizDevIdea(BaseModel):
     customer_readiness: str = Field(description="ターゲット顧客（小規模事業者・個人店）の受容性・導入障壁")
     objective_verdict: str = Field(description="客観的参謀としての辛口ジャッジ")
 
+    # 定量評価スコア（グラフ・比較表用、1〜5段階）
+    impact_score: int = Field(default=4, ge=1, le=5, description="自社KPIおよび事業インパクト度 (1〜5: 5が最大インパクト)")
+    feasibility_score: int = Field(default=3, ge=1, le=5, description="実現容易性・実装難易度 (1〜5: 5が最も容易/低難易度)")
+    speed_score: int = Field(default=3, ge=1, le=5, description="市場検証・立ち上げのスピード感 (1〜5: 5が最も即効性あり)")
+    target_market_size: str = Field(default="中", description="市場規模感 (「特大」「大」「中」「ニッチ」)")
+
     # 後方互換用フィールド（古いレポートデータや単一記事参照用）
     article_title: Optional[str] = Field(default="", description="主要記事タイトル（後方互換用）")
     article_url: Optional[str] = Field(default="", description="主要記事URL（後方互換用）")
@@ -84,7 +90,7 @@ class BizDevIdea(BaseModel):
 
     @model_validator(mode="after")
     def sync_legacy_fields(self):
-        """idea_titleとarticle_title、source_articlesと単一記事フィールドの相互補完"""
+        """idea_titleとarticle_title、source_articlesと単一記事フィールド、スコアの相互補完"""
         # idea_title と article_title の同期
         if not self.idea_title and self.article_title:
             self.idea_title = self.article_title
@@ -110,6 +116,23 @@ class BizDevIdea(BaseModel):
                     is_global=self.is_global
                 )
             ]
+
+        # 過去データ用: feasibility_rating から feasibility_score の補正
+        if self.feasibility_rating and self.feasibility_score == 3:
+            if "高" in self.feasibility_rating or "容易" in self.feasibility_rating:
+                self.feasibility_score = 4
+            elif "低" in self.feasibility_rating or "困難" in self.feasibility_rating or "難" in self.feasibility_rating:
+                self.feasibility_score = 2
+
+        # 過去データ用: objective_verdict から impact_score や speed_score の補正
+        if self.objective_verdict:
+            if "即座に着手" in self.objective_verdict or "即着手" in self.objective_verdict:
+                self.impact_score = max(self.impact_score, 5)
+                self.speed_score = max(self.speed_score, 4)
+            elif "限定検証" in self.objective_verdict:
+                self.impact_score = max(self.impact_score, 4)
+                self.speed_score = max(self.speed_score, 3)
+
         return self
 
 

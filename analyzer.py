@@ -284,6 +284,10 @@ def generate_bizdev_analysis(
 12. critical_risks: 最大の盲点・参入障壁・大手競合の模倣リスク、やらない理由
 13. customer_readiness: ターゲット顧客（個人店・小規模事業者など）の受容性・導入障壁
 14. objective_verdict: 客観的参謀としての辛口ジャッジ（「即座に着手」「限定検証」「見送り」とその率直な根拠）
+15. impact_score: 自社KPIおよび事業インパクト度（1〜5の整数。5が最大）
+16. feasibility_score: 実現容易性・開発難易度（1〜5の整数。5が最も容易/低難易度、1が高難易度）
+17. speed_score: PoC開始・市場投入のスピード感（1〜5の整数。5が最も即効性あり）
+18. target_market_size: 想定市場規模感（「特大」「大」「中」「ニッチ」のいずれか）
 
 最後に overall_trend_comment に、今回分析した複数記事群から見える今週のAI・IT業界のマクロな潮目と総括コメント（200〜300文字）を記載してください。
 """

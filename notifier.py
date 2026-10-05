@@ -15,8 +15,42 @@ logger = logging.getLogger(__name__)
 REPORTS_DIR = "reports"
 
 
+def _score_stars(score: int) -> str:
+    s = max(1, min(5, score or 3))
+    return "★" * s + "☆" * (5 - s)
+
+
+def _score_bar(score: int, max_val: int = 5) -> str:
+    s = max(1, min(max_val, score or 3))
+    filled = "█" * (s * 2)
+    empty = "░" * ((max_val - s) * 2)
+    return f"[{filled}{empty}] {s}/{max_val}"
+
+
+def _verdict_badge(verdict: str) -> str:
+    v = verdict or ""
+    if "即座" in v or "即着手" in v:
+        return "🟢 **即座に着手**"
+    elif "限定" in v:
+        return "🟡 **限定検証**"
+    elif "見送り" in v:
+        return "🔴 **見送り**"
+    return f"⚖️ **{v[:15]}**"
+
+
+def _recommended_action(impact: int, feasibility: int) -> str:
+    if impact >= 4 and feasibility >= 4:
+        return "🚀 **クイックウィン (最優先で即着手)**"
+    elif impact >= 4 and feasibility <= 3:
+        return "🎯 **戦略的投資 (PoCで段階検証)**"
+    elif impact <= 3 and feasibility >= 4:
+        return "⚡ **低リスク改善 (余力で実施)**"
+    else:
+        return "🔍 **要再検討 / 見送り**"
+
+
 def format_report_to_markdown(report: Any) -> str:
-    """レポートを読みやすいMarkdown形式にフォーマットする"""
+    """レポートを読みやすいMarkdown形式（表やグラフ・スコアゲージ満載）にフォーマットする"""
     md = f"# {report.report_title}\n\n"
     kpi_meta = f" | **🎯 重点KPI:** {report.focus_kpi}" if report.focus_kpi else ""
     md += f"**対象部門/企業:** {report.company_name} | **生成日:** {report.generated_at}{kpi_meta}\n\n"
@@ -25,10 +59,60 @@ def format_report_to_markdown(report: Any) -> str:
     md += f"{report.overall_trend_comment}\n\n"
     md += "---\n\n"
 
+    # =========================================================================
+    # 1. エグゼクティブ・サマリー比較表 (全アイデア一覧)
+    # =========================================================================
+    if report.ideas:
+        md += "## 📊 【エグゼクティブ比較表】今週の事業アイデア一覧\n\n"
+        md += "| No. | アイデア企画名 | 着想元 | KPIインパクト | 実現容易性 | スピード | 市場規模 | 参謀判定 |\n"
+        md += "|:---:|:---|:---|:---:|:---:|:---:|:---:|:---|\n"
+        for idx, idea in enumerate(report.ideas, 1):
+            title = getattr(idea, "idea_title", None) or getattr(idea, "article_title", "") or f"アイデア {idx}"
+            global_tag = "🇺🇸海外" if getattr(idea, "is_global", False) else "🇯🇵国内"
+            source_arts = getattr(idea, "source_articles", [])
+            if source_arts:
+                sources_str = ", ".join([f"{'🇺🇸' if a.is_global else '🇯🇵'}{a.source or 'メディア'}" for a in source_arts[:2]])
+            else:
+                sources_str = global_tag
+
+            imp = getattr(idea, "impact_score", 4)
+            fea = getattr(idea, "feasibility_score", 3)
+            spd = getattr(idea, "speed_score", 3)
+            mkt = getattr(idea, "target_market_size", "中")
+            vrd = _verdict_badge(getattr(idea, "objective_verdict", ""))
+
+            md += f"| **{idx}** | **{title}** | {sources_str} | {_score_stars(imp)} | {_score_stars(fea)} | {_score_stars(spd)} | {mkt} | {vrd} |\n"
+        md += "\n"
+
+        # =========================================================================
+        # 2. ポジショニング & 評価マトリクス (インパクト × 実現性チャート)
+        # =========================================================================
+        md += "### 📈 アイデア評価マトリクス (インパクト × 実現容易性)\n\n"
+        md += "| No. | アイデア企画名 | 🎯 KPIインパクト | ⚡ 実現容易性 | ⏱️ 検証スピード | 📌 推奨アクション |\n"
+        md += "|:---:|:---|:---|:---|:---|:---|\n"
+        for idx, idea in enumerate(report.ideas, 1):
+            title = getattr(idea, "idea_title", None) or getattr(idea, "article_title", "") or f"アイデア {idx}"
+            imp = getattr(idea, "impact_score", 4)
+            fea = getattr(idea, "feasibility_score", 3)
+            spd = getattr(idea, "speed_score", 3)
+            act = _recommended_action(imp, fea)
+            md += f"| **{idx}** | **{title}** | `{_score_bar(imp)}` | `{_score_bar(fea)}` | `{_score_bar(spd)}` | {act} |\n"
+        md += "\n---\n\n"
+
+    # =========================================================================
+    # 3. 各アイデアの詳細分析 (表とフロー図で視覚化)
+    # =========================================================================
     for idx, idea in enumerate(report.ideas, 1):
-        idea_title = getattr(idea, "idea_title", None) or idea.article_title or f"事業アイデア {idx}"
+        idea_title = getattr(idea, "idea_title", None) or getattr(idea, "article_title", "") or f"事業アイデア {idx}"
         global_badge = " [🇺🇸 海外先行事例]" if getattr(idea, "is_global", False) else ""
         md += f"## 🚀 アイデア {idx}: {idea_title}{global_badge}\n\n"
+
+        # スコアカード
+        imp = getattr(idea, "impact_score", 4)
+        fea = getattr(idea, "feasibility_score", 3)
+        spd = getattr(idea, "speed_score", 3)
+        mkt = getattr(idea, "target_market_size", "中")
+        md += f"> **【定量スコア】** 🎯 **インパクト:** `{_score_bar(imp)}` | ⚡ **実現容易性:** `{_score_bar(fea)}` | ⏱️ **検証スピード:** `{_score_bar(spd)}` | 🏢 **市場規模:** `{mkt}`\n\n"
 
         # 複数記事の参照情報
         source_arts = getattr(idea, "source_articles", [])
@@ -54,20 +138,36 @@ def format_report_to_markdown(report: Any) -> str:
             md += f"- **🔍 市場背景・競合動向 (Webリサーチ):**\n  > {idea.researched_facts}\n\n"
         if getattr(idea, "localization_opportunity", None):
             md += f"- **🌐 日本市場へのローカライズ機会 (タイムマシン経営):**\n  > {idea.localization_opportunity}\n\n"
-        
-        md += "### 💡 攻めの事業企画 (Solution & Monetization)\n"
-        md += f"- **世の中の課題 (Pain):** {idea.market_pain}\n"
-        md += f"- **活用技術 (Tech):** {idea.latest_tech}\n"
-        md += f"- **解決・事業化案:** {idea.solution_idea}\n"
-        md += f"- **マネタイズモデル:** {idea.monetization_model}\n"
-        md += f"- **🎯 自社KPIへの貢献:** {idea.kpi_impact}\n"
-        md += f"- **自社での最初の打ち手:** {idea.internal_next_action}\n\n"
 
-        md += "### 🛡️ 守り・リスク評価 (Critical Defense & Risk)\n"
-        md += f"- **実現性・難易度:** {idea.feasibility_rating}\n"
-        md += f"- **最大の盲点・参入障壁:** {idea.critical_risks}\n"
-        md += f"- **顧客受容性・導入障壁:** {idea.customer_readiness}\n"
-        md += f"- **⚖️ 客観的参謀の辛口ジャッジ:**\n  > {idea.objective_verdict}\n\n"
+        # 事業創出フロー図
+        md += "### 🔄 事業創出フロー\n"
+        md += f"```text\n"
+        md += f"【顧客の課題 (Pain)】 {idea.market_pain[:45]}...\n"
+        md += f"       ▼\n"
+        md += f"【AIソリューション】  {idea.solution_idea[:45]}...\n"
+        md += f"       ▼\n"
+        md += f"【成果 & KPI達成】   {idea.kpi_impact[:45]}...\n"
+        md += f"```\n\n"
+
+        # 攻めの事業企画 (表形式)
+        md += "### 💡 攻めの事業企画 (Solution & Monetization)\n\n"
+        md += "| 項目 | 内容・仕様 |\n"
+        md += "|:---|:---|\n"
+        md += f"| 💥 **世の中の課題 (Pain)** | {idea.market_pain} |\n"
+        md += f"| ⚙️ **活用技術 (Tech)** | {idea.latest_tech} |\n"
+        md += f"| 💡 **解決・事業化案** | **{idea.solution_idea}** |\n"
+        md += f"| 💰 **マネタイズモデル** | {idea.monetization_model} |\n"
+        md += f"| 🎯 **自社KPIへの貢献** | **{idea.kpi_impact}** |\n"
+        md += f"| 🚀 **自社での最初の打ち手** | `{idea.internal_next_action}` |\n\n"
+
+        # 守り・リスク評価 (表形式)
+        md += "### 🛡️ 守り・リスク評価 (Critical Defense & Risk)\n\n"
+        md += "| 評価軸 | 参謀の冷徹判定・分析 |\n"
+        md += "|:---|:---|\n"
+        md += f"| ⚡ **実現性・難易度** | {idea.feasibility_rating} ({_score_stars(fea)}) |\n"
+        md += f"| ⚠️ **最大の盲点・参入障壁** | {idea.critical_risks} |\n"
+        md += f"| 👥 **顧客受容性・導入障壁** | {idea.customer_readiness} |\n"
+        md += f"| ⚖️ **客観的参謀の辛口ジャッジ** | {_verdict_badge(idea.objective_verdict)}<br>*{idea.objective_verdict}* |\n\n"
 
         md += "---\n\n"
 
@@ -75,12 +175,75 @@ def format_report_to_markdown(report: Any) -> str:
 
 
 def format_report_to_html(report: WeeklyReport) -> str:
-    """Outlookメール用のリッチで美しいHTMLメール本文を生成する"""
+    """メール用のリッチで美しいHTML本文を生成する（グラフバー・表満載）"""
+    # 比較サマリー表の行HTML
+    summary_rows_html = ""
+    for idx, idea in enumerate(report.ideas, 1):
+        idea_title = getattr(idea, "idea_title", None) or getattr(idea, "article_title", "") or f"アイデア {idx}"
+        is_global = getattr(idea, "is_global", False)
+        g_badge = '<span style="background-color: #5c2d91; color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 4px;">🇺🇸海外</span>' if is_global else '<span style="background-color: #0078d4; color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 4px;">🇯🇵国内</span>'
+        imp = getattr(idea, "impact_score", 4)
+        fea = getattr(idea, "feasibility_score", 3)
+        spd = getattr(idea, "speed_score", 3)
+        vrd = getattr(idea, "objective_verdict", "")
+        vrd_color = "#107c41" if ("即座" in vrd or "即着手" in vrd) else ("#d83b01" if "見送り" in vrd else "#0078d4")
+
+        summary_rows_html += f"""
+        <tr style="border-bottom: 1px solid #edebe9; font-size: 13px;">
+            <td style="padding: 10px 8px; text-align: center; font-weight: bold; color: #0078d4;">#{idx}</td>
+            <td style="padding: 10px 8px; font-weight: bold; color: #323130;">{g_badge} {idea_title}</td>
+            <td style="padding: 10px 8px; text-align: center; color: #d83b01; font-weight: bold;">{_score_stars(imp)}</td>
+            <td style="padding: 10px 8px; text-align: center; color: #0078d4; font-weight: bold;">{_score_stars(fea)}</td>
+            <td style="padding: 10px 8px; text-align: center; color: #107c41; font-weight: bold;">{_score_stars(spd)}</td>
+            <td style="padding: 10px 8px; font-size: 12px; color: {vrd_color}; font-weight: bold;">{vrd[:20]}</td>
+        </tr>
+        """
+
     ideas_html = ""
     for idx, idea in enumerate(report.ideas, 1):
-        idea_title = getattr(idea, "idea_title", None) or idea.article_title or f"事業アイデア {idx}"
+        idea_title = getattr(idea, "idea_title", None) or getattr(idea, "article_title", "") or f"事業アイデア {idx}"
         is_global = getattr(idea, "is_global", False)
         global_badge = '<span style="background-color: #5c2d91; color: #ffffff; font-size: 11px; font-weight: normal; padding: 2px 8px; border-radius: 10px; margin-left: 8px; vertical-align: middle;">🇺🇸 海外先行事例</span>' if is_global else ''
+
+        imp = getattr(idea, "impact_score", 4)
+        fea = getattr(idea, "feasibility_score", 3)
+        spd = getattr(idea, "speed_score", 3)
+        mkt = getattr(idea, "target_market_size", "中")
+
+        # スコアバーメーターHTML
+        score_meters_html = f"""
+        <div style="background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 14px 18px; margin-bottom: 16px;">
+            <div style="font-weight: bold; font-size: 13px; color: #495057; margin-bottom: 10px;">📊 定量スコア・評価メーター</div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <tr>
+                    <td style="width: 25%; color: #d83b01; font-weight: bold;">🎯 自社KPIインパクト</td>
+                    <td style="width: 25%;">
+                        <div style="background-color: #edebe9; border-radius: 4px; height: 10px; overflow: hidden; width: 100%;">
+                            <div style="background-color: #d83b01; height: 100%; width: {imp * 20}%;"></div>
+                        </div>
+                    </td>
+                    <td style="width: 25%; padding-left: 15px; color: #0078d4; font-weight: bold;">⚡ 実現容易性</td>
+                    <td style="width: 25%;">
+                        <div style="background-color: #edebe9; border-radius: 4px; height: 10px; overflow: hidden; width: 100%;">
+                            <div style="background-color: #0078d4; height: 100%; width: {fea * 20}%;"></div>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="color: #107c41; font-weight: bold; padding-top: 8px;">⏱️ 検証スピード</td>
+                    <td style="padding-top: 8px;">
+                        <div style="background-color: #edebe9; border-radius: 4px; height: 10px; overflow: hidden; width: 100%;">
+                            <div style="background-color: #107c41; height: 100%; width: {spd * 20}%;"></div>
+                        </div>
+                    </td>
+                    <td style="padding-left: 15px; color: #5c2d91; font-weight: bold; padding-top: 8px;">🏢 想定市場規模</td>
+                    <td style="padding-top: 8px; font-weight: bold; color: #5c2d91;">
+                        {mkt}
+                    </td>
+                </tr>
+            </table>
+        </div>
+        """
 
         # 複数記事の参照リスト
         source_arts = getattr(idea, "source_articles", [])
@@ -143,103 +306,122 @@ def format_report_to_html(report: WeeklyReport) -> str:
             </div>
             """
 
+        # 課題 ➔ 解決 ➔ 成果のフロー
+        flow_box = f"""
+        <div style="display: flex; justify-content: space-between; background-color: #f0f4f8; border-radius: 6px; padding: 12px; margin-bottom: 16px; font-size: 12px; text-align: center;">
+            <div style="width: 30%; background-color: #fff; padding: 8px; border-radius: 4px; border-left: 3px solid #d83b01;">
+                <strong style="color: #d83b01;">💥 顧客の課題</strong><br>{idea.market_pain[:30]}...
+            </div>
+            <div style="display: flex; align-items: center; color: #8a8886; font-size: 16px;">➔</div>
+            <div style="width: 30%; background-color: #fff; padding: 8px; border-radius: 4px; border-left: 3px solid #0078d4;">
+                <strong style="color: #0078d4;">💡 AI解決案</strong><br>{idea.solution_idea[:30]}...
+            </div>
+            <div style="display: flex; align-items: center; color: #8a8886; font-size: 16px;">➔</div>
+            <div style="width: 30%; background-color: #fff; padding: 8px; border-radius: 4px; border-left: 3px solid #107c41;">
+                <strong style="color: #107c41;">🎯 KPI達成</strong><br>{idea.kpi_impact[:30]}...
+            </div>
+        </div>
+        """
+
         ideas_html += f"""
         <div style="margin-bottom: 30px; padding: 22px; background-color: #ffffff; border: 1px solid #e1dfdd; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.06);">
             <h3 style="margin-top: 0; color: #0078d4; font-size: 18px; border-bottom: 2px solid #0078d4; padding-bottom: 8px;">
                 🚀 アイデア {idx}: {idea_title} {global_badge}
             </h3>
+            {score_meters_html}
+            {flow_box}
             {sources_box}
             {synergy_box}
             {researched_box}
             {localization_box}
 
             <h4 style="margin: 16px 0 8px 0; font-size: 15px; color: #106ebe; border-bottom: 1px dashed #c8c6c4; padding-bottom: 4px;">
-                💡 攻めの事業企画 (Solution & Monetization)
+                💡 攻めの事業企画スペック表
             </h4>
-            <table style="width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.6; margin-bottom: 16px;">
-                <tr>
-                    <td style="width: 25%; font-weight: bold; color: #d83b01; padding: 6px 0; vertical-align: top;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.6; margin-bottom: 16px;">
+                <tr style="border-bottom: 1px solid #f3f2f1;">
+                    <td style="width: 25%; font-weight: bold; color: #d83b01; padding: 8px 6px; vertical-align: top; background-color: #fffaf9;">
                         💥 課題 (Pain)
                     </td>
-                    <td style="padding: 6px 0; color: #323130;">
+                    <td style="padding: 8px 6px; color: #323130;">
                         {idea.market_pain}
                     </td>
                 </tr>
-                <tr>
-                    <td style="font-weight: bold; color: #107c41; padding: 6px 0; vertical-align: top;">
+                <tr style="border-bottom: 1px solid #f3f2f1;">
+                    <td style="font-weight: bold; color: #107c41; padding: 8px 6px; vertical-align: top; background-color: #f7fdf9;">
                         ⚙️ 最新技術 (Tech)
                     </td>
-                    <td style="padding: 6px 0; color: #323130;">
+                    <td style="padding: 8px 6px; color: #323130;">
                         {idea.latest_tech}
                     </td>
                 </tr>
-                <tr>
-                    <td style="font-weight: bold; color: #0078d4; padding: 6px 0; vertical-align: top;">
+                <tr style="border-bottom: 1px solid #f3f2f1;">
+                    <td style="font-weight: bold; color: #0078d4; padding: 8px 6px; vertical-align: top; background-color: #f5faff;">
                         💡 解決・事業案
                     </td>
-                    <td style="padding: 6px 0; color: #323130; font-weight: 500;">
+                    <td style="padding: 8px 6px; color: #323130; font-weight: bold;">
                         {idea.solution_idea}
                     </td>
                 </tr>
-                <tr>
-                    <td style="font-weight: bold; color: #8764b8; padding: 6px 0; vertical-align: top;">
+                <tr style="border-bottom: 1px solid #f3f2f1;">
+                    <td style="font-weight: bold; color: #8764b8; padding: 8px 6px; vertical-align: top; background-color: #faf7fd;">
                         💰 マネタイズ
                     </td>
-                    <td style="padding: 6px 0; color: #323130;">
+                    <td style="padding: 8px 6px; color: #323130;">
                         {idea.monetization_model}
                     </td>
                 </tr>
-                <tr>
-                    <td style="font-weight: bold; color: #d83b01; padding: 6px 0; vertical-align: top;">
+                <tr style="border-bottom: 1px solid #f3f2f1;">
+                    <td style="font-weight: bold; color: #d83b01; padding: 8px 6px; vertical-align: top; background-color: #fffaf9;">
                         🎯 KPI貢献
                     </td>
-                    <td style="padding: 6px 0; color: #323130; font-weight: 500;">
+                    <td style="padding: 8px 6px; color: #323130; font-weight: bold;">
                         {idea.kpi_impact}
                     </td>
                 </tr>
                 <tr>
-                    <td style="font-weight: bold; color: #004e8c; padding: 6px 0; vertical-align: top;">
+                    <td style="font-weight: bold; color: #004e8c; padding: 8px 6px; vertical-align: top; background-color: #f0f7ff;">
                         🚀 自社の打ち手
                     </td>
-                    <td style="padding: 6px 0; color: #323130; background-color: #f0f7ff; padding: 6px 8px; border-radius: 4px;">
+                    <td style="padding: 8px 6px; color: #323130; background-color: #f0f7ff; border-radius: 4px; font-weight: bold;">
                         {idea.internal_next_action}
                     </td>
                 </tr>
             </table>
 
             <h4 style="margin: 16px 0 8px 0; font-size: 15px; color: #a80000; border-bottom: 1px dashed #c8c6c4; padding-bottom: 4px;">
-                🛡️ 守り・リスク評価 (Critical Defense & Risk)
+                🛡️ 守り・リスク評価マトリクス表
             </h4>
-            <table style="width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.6;">
-                <tr>
-                    <td style="width: 25%; font-weight: bold; color: #5c2d91; padding: 6px 0; vertical-align: top;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.6;">
+                <tr style="border-bottom: 1px solid #f3f2f1;">
+                    <td style="width: 25%; font-weight: bold; color: #5c2d91; padding: 8px 6px; vertical-align: top; background-color: #faf7fd;">
                         ⚡ 実現性・難易度
                     </td>
-                    <td style="padding: 6px 0; color: #323130;">
-                        {idea.feasibility_rating}
+                    <td style="padding: 8px 6px; color: #323130;">
+                        {idea.feasibility_rating} ({_score_stars(fea)})
                     </td>
                 </tr>
-                <tr>
-                    <td style="font-weight: bold; color: #a80000; padding: 6px 0; vertical-align: top;">
+                <tr style="border-bottom: 1px solid #f3f2f1;">
+                    <td style="font-weight: bold; color: #a80000; padding: 8px 6px; vertical-align: top; background-color: #fff5f5;">
                         ⚠️ 最大の盲点・障壁
                     </td>
-                    <td style="padding: 6px 0; color: #323130; background-color: #fff4f4; padding: 6px 8px; border-radius: 4px;">
+                    <td style="padding: 8px 6px; color: #323130; background-color: #fff8f8;">
                         {idea.critical_risks}
                     </td>
                 </tr>
-                <tr>
-                    <td style="font-weight: bold; color: #498205; padding: 6px 0; vertical-align: top;">
+                <tr style="border-bottom: 1px solid #f3f2f1;">
+                    <td style="font-weight: bold; color: #498205; padding: 8px 6px; vertical-align: top; background-color: #f8fbf5;">
                         👥 顧客の受容性
                     </td>
-                    <td style="padding: 6px 0; color: #323130;">
+                    <td style="padding: 8px 6px; color: #323130;">
                         {idea.customer_readiness}
                     </td>
                 </tr>
                 <tr>
-                    <td style="font-weight: bold; color: #004b50; padding: 6px 0; vertical-align: top;">
+                    <td style="font-weight: bold; color: #004b50; padding: 8px 6px; vertical-align: top; background-color: #f4fafb;">
                         ⚖️ 参謀の辛口ジャッジ
                     </td>
-                    <td style="padding: 6px 0; color: #201f1e; background-color: #f6f8fa; font-weight: 500; padding: 6px 8px; border-left: 3px solid #004b50;">
+                    <td style="padding: 8px 6px; color: #201f1e; background-color: #f6f8fa; font-weight: bold; border-left: 3px solid #004b50;">
                         {idea.objective_verdict}
                     </td>
                 </tr>
@@ -254,7 +436,7 @@ def format_report_to_html(report: WeeklyReport) -> str:
         <meta charset="utf-8">
     </head>
     <body style="font-family: 'Segoe UI', Meiryo, 'Hiragino Kaku Gothic ProN', sans-serif; background-color: #faf9f8; color: #323130; margin: 0; padding: 20px;">
-        <div style="max-width: 800px; margin: 0 auto;">
+        <div style="max-width: 820px; margin: 0 auto;">
             <!-- ヘッダー -->
             <div style="background: linear-gradient(135deg, #0078d4, #106ebe); color: #ffffff; padding: 24px; border-radius: 8px; margin-bottom: 20px;">
                 <h1 style="margin: 0 0 8px 0; font-size: 22px;">{report.report_title}</h1>
@@ -271,6 +453,28 @@ def format_report_to_html(report: WeeklyReport) -> str:
                 <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #201f1e;">
                     {report.overall_trend_comment}
                 </p>
+            </div>
+
+            <!-- エグゼクティブ・サマリー比較表 -->
+            <div style="background-color: #ffffff; border: 1px solid #e1dfdd; border-radius: 8px; padding: 20px; margin-bottom: 25px; box-shadow: 0 2px 5px rgba(0,0,0,0.06);">
+                <h3 style="margin-top: 0; margin-bottom: 12px; color: #0078d4; font-size: 16px; border-bottom: 2px solid #0078d4; padding-bottom: 6px;">
+                    📊 【エグゼクティブ比較表】今週の全アイデア一覧
+                </h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background-color: #f3f2f1; font-size: 12px; color: #605e5c; text-align: left; border-bottom: 2px solid #e1dfdd;">
+                            <th style="padding: 8px; text-align: center;">No</th>
+                            <th style="padding: 8px;">アイデア名</th>
+                            <th style="padding: 8px; text-align: center;">KPIインパクト</th>
+                            <th style="padding: 8px; text-align: center;">実現容易性</th>
+                            <th style="padding: 8px; text-align: center;">スピード</th>
+                            <th style="padding: 8px;">参謀ジャッジ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {summary_rows_html}
+                    </tbody>
+                </table>
             </div>
 
             <!-- アイデア一覧 -->
@@ -319,7 +523,13 @@ def load_report_data(report_id: str) -> dict:
     if os.path.exists(json_path):
         try:
             with open(json_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
+                raw_json = json.load(f)
+            # WeeklyReportモデルを通してスコアの自動計算・補完を反映
+            try:
+                model_obj = WeeklyReport(**raw_json)
+                data = model_obj.model_dump()
+            except Exception:
+                data = raw_json
         except Exception as e:
             logger.warning(f"JSON読み込み失敗: {e}")
 
